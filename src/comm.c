@@ -2126,6 +2126,9 @@ void close_socket(struct descriptor_data *d)
     case CON_HEDIT:
     case CON_QEDIT:
     case CON_MSGEDIT:
+    case CON_CEDIT:
+    case CON_PREFEDIT:
+    case CON_IBTEDIT:
       cleanup_olc(d, CLEANUP_ALL);
       break;
     default:
