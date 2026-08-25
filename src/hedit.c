@@ -84,7 +84,10 @@ ACMD(do_oasis_hedit)
   
   OLC_ZNUM(d) = search_help(OLC_STORAGE(d), LVL_IMPL);
 
-  if (help_table[OLC_ZNUM(d)].duplicate) {
+  /* search_help() answers NOWHERE for a keyword with no entry, which is
+   * every `hedit <new keyword>` -- so this has to be asked after the test
+   * below, not before it, or the table is read at index 65535. */
+  if (OLC_ZNUM(d) != NOWHERE && help_table[OLC_ZNUM(d)].duplicate) {
     for (i = 0; i < top_of_helpt; i++)
       if (help_table[i].duplicate == 0 && help_table[i].entry == help_table[OLC_ZNUM(d)].entry) {
         OLC_ZNUM(d) = i;
