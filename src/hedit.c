@@ -252,10 +252,12 @@ void hedit_parse(struct descriptor_data *d, char *arg)
       for (; OLC_ZNUM(d) < top_of_helpt; OLC_ZNUM(d)++)
         if (is_abbrev(OLC_STORAGE(d), help_table[OLC_ZNUM(d)].keywords))
           break;
-        else
-          OLC_ZNUM(d) = top_of_helpt + 1;
 
-      if (OLC_ZNUM(d) > top_of_helpt) {
+      if (OLC_ZNUM(d) >= top_of_helpt) {
+        /* Out of matches, so this is an add -- and hedit_save_internally()
+         * only appends when the index is NOWHERE.  The old code left it at
+         * top_of_helpt + 2 and the save wrote the table there. */
+        OLC_ZNUM(d) = NOWHERE;
         write_to_output(d, "Do you wish to add the '%s' help file? ",
             OLC_STORAGE(d));
         OLC_MODE(d) = HEDIT_CONFIRM_ADD;
