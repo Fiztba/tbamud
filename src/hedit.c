@@ -221,7 +221,7 @@ void hedit_parse(struct descriptor_data *d, char *arg)
     case 'Y':
       snprintf(buf, sizeof(buf), "OLC: %s edits help for %s.", GET_NAME(d->character),
                OLC_HELP(d)->keywords);
-      mudlog(TRUE, MAX(LVL_BUILDER, GET_INVIS_LEV(d->character)), CMP, "%s", buf);
+      mudlog(CMP, MAX(LVL_BUILDER, GET_INVIS_LEV(d->character)), TRUE, "%s", buf);
       write_to_output(d, "Help saved to disk.\r\n");
       hedit_save_internally(d);
 
@@ -336,7 +336,7 @@ void hedit_parse(struct descriptor_data *d, char *arg)
 
   case HEDIT_ENTRY:
     /* We will NEVER get here, we hope. */
-    mudlog(TRUE, LVL_BUILDER, BRF, "SYSERR: Reached HEDIT_ENTRY case in parse_hedit");
+    mudlog(BRF, LVL_BUILDER, TRUE, "SYSERR: Reached HEDIT_ENTRY case in parse_hedit");
     break;
 
   case HEDIT_MIN_LEVEL:
@@ -351,7 +351,7 @@ void hedit_parse(struct descriptor_data *d, char *arg)
 
   default:
     /* We should never get here. */
-    mudlog(TRUE, LVL_BUILDER, BRF, "SYSERR: Reached default case in parse_hedit");
+    mudlog(BRF, LVL_BUILDER, TRUE, "SYSERR: Reached default case in parse_hedit");
     break;
   }
 
