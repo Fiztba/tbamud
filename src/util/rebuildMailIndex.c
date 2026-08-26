@@ -16,9 +16,13 @@
 #define FLAG(n) (1 << (n))
 
 #ifndef FALSE
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
+enum _boolean_type { FALSE=0, TRUE };
+#else
 typedef enum _boolean_type {
   FALSE=0, TRUE
 } bool;
+#endif
 #endif
 
 /* 128-bit flag defines (from utils.h) */
