@@ -54,7 +54,7 @@ static struct mail_t *read_mail_record(FILE *mail_file)
   time_t sent_time;
   struct mail_t *record;
 
-  if (!get_line(mail_file, line))
+  if (!get_line(mail_file, line, sizeof(line)))
   	return NULL;
 
   if (sscanf(line, "### %ld %ld %ld", &recipient, &sender, (long *)&sent_time) != 3) {

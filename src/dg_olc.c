@@ -887,7 +887,7 @@ static void trigedit_create_index(int znum, char *type)
   /* Index contents must be in order: search through the old file for the right
    * place, insert the new file, then copy the rest over. */
   snprintf(buf1, sizeof(buf1), "%d.%s", znum, type);
-  while (get_line(oldfile, buf)) {
+  while (get_line(oldfile, buf, sizeof(buf))) {
     if (*buf == '$') {
       fprintf(newfile, "%s\n$\n", (!found ? buf1 : ""));
       break;
