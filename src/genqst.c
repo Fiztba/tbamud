@@ -255,6 +255,8 @@ int save_quests(zone_rnum zone_num)
                "SYSERR: Could not format quest #%d for saving.",
                QST_NUM(rnum));
         fclose(sf);
+        if (!CONFIG_DEBUG_MODE)
+          remove(filename);
         return FALSE;
       }
 
@@ -263,6 +265,8 @@ int save_quests(zone_rnum zone_num)
                "SYSERR: Could not save quest #%d due to size (%d >= maximum of %d).",
                QST_NUM(rnum), n, MAX_STRING_LENGTH);
         fclose(sf);
+        if (!CONFIG_DEBUG_MODE)
+          remove(filename);
         return FALSE;
       }
 
@@ -271,6 +275,8 @@ int save_quests(zone_rnum zone_num)
                "SYSERR: Error writing quest #%d to %s.",
                QST_NUM(rnum), filename);
         fclose(sf);
+        if (!CONFIG_DEBUG_MODE)
+          remove(filename);
         return FALSE;
       }
 
@@ -282,12 +288,16 @@ int save_quests(zone_rnum zone_num)
     mudlog(BRF, LVL_BUILDER, TRUE,
            "SYSERR: Error finalizing quest file %s.", filename);
     fclose(sf);
+    if (!CONFIG_DEBUG_MODE)
+      remove(filename);
     return FALSE;
   }
 
   if (fclose(sf) == EOF) {
     mudlog(BRF, LVL_BUILDER, TRUE,
            "SYSERR: Error closing quest file %s.", filename);
+    if (!CONFIG_DEBUG_MODE)
+      remove(filename);
     return FALSE;
   }
 
