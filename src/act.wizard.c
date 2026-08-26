@@ -4168,67 +4168,132 @@ ACMD(do_checkloadstatus)
 ACMD(do_copyover)
 {
   FILE *fp;
-  struct descriptor_data *d, *d_next;
-  char buf [100], buf2[100];
+  struct descriptor_data *d, *d_next, *initiator;
+  struct char_data *och;
+  char buf[100], buf2[100];
+  int file_ok = TRUE;
 
-  fp = fopen (COPYOVER_FILE, "w");
-    if (!fp) {
-      send_to_char (ch, "Copyover file not writeable, aborted.\n\r");
+  initiator = ch->desc;
+
+  /*
+   * First return switched descriptors to their real characters and save every
+   * playing character without removing objects from the live game.
+   */
+  for (d = descriptor_list; d; d = d->next) {
+    och = d->character;
+
+    if (och && d->original) {
+      return_to_char(och);
+      och = d->character;
+    }
+
+    if (!och || d->connected > CON_PLAYING)
+      continue;
+
+    GET_LOADROOM(och) = GET_ROOM_VNUM(IN_ROOM(och));
+
+    if (!Crash_copyoversave(och)) {
+      if (initiator && initiator->character)
+        ch = initiator->character;
+
+      send_to_char(ch,
+          "Copyover aborted: unable to save %s's belongings.\r\n",
+          GET_NAME(och));
+      mudlog(BRF, MAX(LVL_GOD, GET_INVIS_LEV(ch)), TRUE,
+          "Copyover aborted: failed to save %s's belongings.",
+          GET_NAME(och));
       return;
     }
 
-   sprintf (buf, "\n\r *** COPYOVER by %s - please remain seated!\n\r", GET_NAME(ch));
+    save_char(och);
+  }
 
-   /* write boot_time as first line in file */
-   fprintf(fp, "%ld\n", (long)boot_time);
+  /*
+   * return_to_char() may have changed the character associated with the
+   * descriptor that issued the command.
+   */
+  if (initiator && initiator->character)
+    ch = initiator->character;
 
-   /* For each playing descriptor, save its state */
-   for (d = descriptor_list; d ; d = d_next) {
-     struct char_data * och = d->character;
-   
-   /* If d is currently in someone else's body, return them. */  
-   if (och && d->original)
-     return_to_char(och);
-        
-   /* We delete from the list , so need to save this */
-     d_next = d->next;
+  /*
+   * Only create the recovery file once every character has been persisted
+   * successfully.
+   */
+  fp = fopen(COPYOVER_FILE, "w");
+  if (!fp) {
+    send_to_char(ch, "Copyover file not writeable, aborted.\n\r");
+    return;
+  }
 
-  /* drop those logging on */
-   if (!d->character || d->connected > CON_PLAYING) {
-     write_to_descriptor (d->descriptor, "\n\rSorry, we are rebooting. Come back in a few minutes.\n\r");
-     close_socket (d); /* throw'em out */
-   } else {
-      fprintf (fp, "%d %ld %s %s %s\n", d->descriptor, GET_PREF(och), GET_NAME(och), d->host, CopyoverGet(d));
-      /* save och */
-      GET_LOADROOM(och) = GET_ROOM_VNUM(IN_ROOM(och));
-      Crash_rentsave(och,0);
-      save_char(och);
-      write_to_descriptor (d->descriptor, buf);
+  snprintf(buf, sizeof(buf),
+      "\n\r *** COPYOVER by %s - please remain seated!\n\r",
+      GET_NAME(ch));
+
+  if (fprintf(fp, "%ld\n", (long)boot_time) < 0)
+    file_ok = FALSE;
+
+  for (d = descriptor_list; d && file_ok; d = d->next) {
+    och = d->character;
+
+    if (!och || d->connected > CON_PLAYING)
+      continue;
+
+    if (fprintf(fp, "%d %ld %s %s %s\n",
+            d->descriptor, GET_PREF(och), GET_NAME(och),
+            d->host, CopyoverGet(d)) < 0)
+      file_ok = FALSE;
+  }
+
+  if (file_ok && fprintf(fp, "-1\n") < 0)
+    file_ok = FALSE;
+  if (file_ok && fflush(fp) == EOF)
+    file_ok = FALSE;
+  if (ferror(fp))
+    file_ok = FALSE;
+  if (fclose(fp) == EOF)
+    file_ok = FALSE;
+
+  if (!file_ok) {
+    send_to_char(ch, "Copyover file write failed, aborted.\r\n");
+    mudlog(BRF, MAX(LVL_GOD, GET_INVIS_LEV(ch)), TRUE,
+        "Copyover aborted: recovery file could not be completed.");
+    return;
+  }
+
+  /*
+   * Persistence and recovery metadata are complete.  Only now close sockets
+   * that cannot survive copyover and notify the players that remain.
+   */
+  for (d = descriptor_list; d; d = d_next) {
+    d_next = d->next;
+
+    if (!d->character || d->connected > CON_PLAYING) {
+      write_to_descriptor(d->descriptor,
+          "\n\rSorry, we are rebooting. Come back in a few minutes.\n\r");
+      close_socket(d);
+    } else {
+      write_to_descriptor(d->descriptor, buf);
     }
   }
 
-  fprintf (fp, "-1\n");
-  fclose (fp);
-
-  /* exec - descriptors are inherited */
-  sprintf (buf, "%d", port);
-  sprintf (buf2, "-C%d", mother_desc);
+  snprintf(buf, sizeof(buf), "%d", port);
+  snprintf(buf2, sizeof(buf2), "-C%d", mother_desc);
 
   /* Ugh, seems it is expected we are 1 step above lib - this may be dangerous! */
-  if(chdir ("..") != 0) {
+  if (chdir("..") != 0) {
     log("Error changing working directory: %s", strerror(errno));
     send_to_char(ch, "Error changing working directory: %s.", strerror(errno));
     exit(1);
   }
 
   /* Close reserve and other always-open files and release other resources */
-  execl (EXE_FILE, "circle", buf2, buf, (char *) NULL);
+  execl(EXE_FILE, "circle", buf2, buf, (char *) NULL);
 
   /* Failed - successful exec will not return */
-  perror ("do_copyover: execl");
-  send_to_char (ch, "Copyover FAILED!\n\r");
+  perror("do_copyover: execl");
+  send_to_char(ch, "Copyover FAILED!\n\r");
 
-  exit (1); /* too much trouble to try to recover! */
+  exit(1); /* too much trouble to try to recover! */
 }
 
 ACMD(do_peace)
