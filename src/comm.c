@@ -384,14 +384,29 @@ int main(int argc, char **argv)
 }
 
 /* Reload players after a copyover */
+/** The three fields copyover_recover() scans out of COPYOVER_FILE.  Each
+ * buffer is declared [FIELD + 1] and each width comes from the same constant,
+ * so the two cannot drift apart.  The sizes are unchanged: 511 + 1 is the
+ * MAX_INPUT_LENGTH the name buffer had, and 1023 + 1 the 1024 the other two
+ * had.
+ *
+ * The two-step stringify is here rather than in utils.h on purpose -- the
+ * same way wld2html.c and rebuildMailIndex.c each carry their own.  Two
+ * levels are required: the inner macro stringifies its argument, so the
+ * outer one has to expand it first. */
+#define COPYOVER_NAME_FIELD  511
+#define COPYOVER_HOST_FIELD  1023
+#define CO_STRINGIFY_(x)     #x
+#define CO_STRINGIFY(x)      CO_STRINGIFY_(x)
+
 void copyover_recover()
 {
   struct descriptor_data *d;
   FILE *fp;
-  char host[1024], guiopt[1024];
+  char host[COPYOVER_HOST_FIELD + 1], guiopt[COPYOVER_HOST_FIELD + 1];
   int desc, i, player_i;
   bool fOld;
-  char name[MAX_INPUT_LENGTH];
+  char name[COPYOVER_NAME_FIELD + 1];
   long pref;
 
   log ("Copyover recovery initiated");
@@ -415,11 +430,14 @@ void copyover_recover()
 
   for (;;) {
     fOld = TRUE;
-    /* Bound every %s: name is MAX_INPUT_LENGTH (512), host and guiopt are
-     * 1024, and a %s with no width fills any of them off the end.  The
-     * file is written by the MUD itself, but it is read back on the far
-     * side of an execv() and nothing revalidates it in between. */
-    if (fscanf(fp, "%d %ld %511s %1023s %1023s\n",
+    /* Bound every %s: one without a width fills whichever buffer it is
+     * handed off the end.  The widths come from the same constants that
+     * size those buffers, just above.  The file is written by the MUD
+     * itself, but it is read back on the far side of an execv() and
+     * nothing revalidates it in between. */
+    if (fscanf(fp, "%d %ld %" CO_STRINGIFY(COPYOVER_NAME_FIELD) "s"
+                   " %" CO_STRINGIFY(COPYOVER_HOST_FIELD) "s"
+                   " %" CO_STRINGIFY(COPYOVER_HOST_FIELD) "s\n",
                &desc, &pref, name, host, guiopt) != 5) {
       if(!feof(fp)) {
         if(ferror(fp))
