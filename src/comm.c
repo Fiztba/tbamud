@@ -444,7 +444,11 @@ void copyover_recover()
     memset ((char *) d, 0, sizeof (struct descriptor_data));
     init_descriptor (d,desc); /* set up various stuff */
 
-    strcpy(d->host, host);
+    /* The fscanf width bounds host[1024], not this copy: d->host is
+     * HOST_LENGTH+1, so the same token would run straight off the end of
+     * the descriptor.  new_descriptor() already caps a real hostname at
+     * HOST_LENGTH, so a copyover written by the MUD loses nothing here. */
+    strlcpy(d->host, host, sizeof(d->host)); /* strlcpy: OK */
     d->next = descriptor_list;
     descriptor_list = d;
 
