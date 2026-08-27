@@ -415,7 +415,12 @@ void copyover_recover()
 
   for (;;) {
     fOld = TRUE;
-    if (fscanf(fp, "%d %ld %s %s %s\n", &desc, &pref, name, host, guiopt) != 5) {
+    /* Bound every %s: name is MAX_INPUT_LENGTH (512), host and guiopt are
+     * 1024, and a %s with no width fills any of them off the end.  The
+     * file is written by the MUD itself, but it is read back on the far
+     * side of an execv() and nothing revalidates it in between. */
+    if (fscanf(fp, "%d %ld %511s %1023s %1023s\n",
+               &desc, &pref, name, host, guiopt) != 5) {
       if(!feof(fp)) {
         if(ferror(fp))
           log("SYSERR: error reading copyover file %s: %s", COPYOVER_FILE, strerror(errno));
