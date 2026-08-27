@@ -601,6 +601,12 @@ int get_number(char **name)
     strlcpy(number, *name, sizeof(number));
     strcpy(*name, ppos);	/* strcpy: OK (always smaller) */
 
+    /* last.<name> asks for the match nearest the end of the list.  Only
+     * obj_to_room() appends, so that is the newest object in a room --
+     * every other list here is built by prepending. */
+    if (!str_cmp(number, "last"))
+      return (FIND_INDEX_LAST);
+
     for (i = 0; *(number + i); i++)
       if (!isdigit(*(number + i)))
 	return (0);
@@ -637,7 +643,7 @@ struct obj_data *get_obj_num(obj_rnum nr)
 /* search a room for a char, and return a pointer if found..  */
 struct char_data *get_char_room(char *name, int *number, room_rnum room)
 {
-  struct char_data *i;
+  struct char_data *i, *last = NULL;
   int num;
 
   if (!number) {
@@ -649,11 +655,14 @@ struct char_data *get_char_room(char *name, int *number, room_rnum room)
     return (NULL);
 
   for (i = world[room].people; i && *number; i = i->next_in_room)
-    if (isname(name, i->player.name))
-      if (--(*number) == 0)
+    if (isname(name, i->player.name)) {
+      if (*number == FIND_INDEX_LAST)
+	last = i;
+      else if (--(*number) == 0)
 	return (i);
+    }
 
-  return (NULL);
+  return (last);
 }
 
 /* search all over the world for a char num, and return a pointer if found */
@@ -1060,7 +1069,7 @@ void extract_pending_chars(void)
  * which incorporate the actual player-data */
 struct char_data *get_player_vis(struct char_data *ch, char *name, int *number, int inroom)
 {
-  struct char_data *i;
+  struct char_data *i, *last = NULL;
   int num;
 
   if (!number) {
@@ -1077,17 +1086,21 @@ struct char_data *get_player_vis(struct char_data *ch, char *name, int *number, 
       continue;
     if (!CAN_SEE(ch, i))
       continue;
+    if (*number == FIND_INDEX_LAST) {
+      last = i;
+      continue;
+    }
     if (--(*number) != 0)
       continue;
     return (i);
   }
 
-  return (NULL);
+  return (last);
 }
 
 struct char_data *get_char_room_vis(struct char_data *ch, char *name, int *number)
 {
-  struct char_data *i;
+  struct char_data *i, *last = NULL;
   int num;
 
   if (!number) {
@@ -1105,16 +1118,19 @@ struct char_data *get_char_room_vis(struct char_data *ch, char *name, int *numbe
 
   for (i = world[IN_ROOM(ch)].people; i && *number; i = i->next_in_room)
     if (isname(name, i->player.name))
-      if (CAN_SEE(ch, i))
-	if (--(*number) == 0)
+      if (CAN_SEE(ch, i)) {
+	if (*number == FIND_INDEX_LAST)
+	  last = i;
+	else if (--(*number) == 0)
 	  return (i);
+      }
 
-  return (NULL);
+  return (last);
 }
 
 struct char_data *get_char_world_vis(struct char_data *ch, char *name, int *number)
 {
-  struct char_data *i;
+  struct char_data *i, *last = NULL;
   int num;
 
   if (!number) {
@@ -1135,12 +1151,16 @@ struct char_data *get_char_world_vis(struct char_data *ch, char *name, int *numb
       continue;
     if (!CAN_SEE(ch, i))
       continue;
+    if (*number == FIND_INDEX_LAST) {
+      last = i;
+      continue;
+    }
     if (--(*number) != 0)
       continue;
 
     return (i);
   }
-  return (NULL);
+  return (last);
 }
 
 struct char_data *get_char_vis(struct char_data *ch, char *name, int *number, int where)
@@ -1155,7 +1175,7 @@ struct char_data *get_char_vis(struct char_data *ch, char *name, int *number, in
 
 struct obj_data *get_obj_in_list_vis(struct char_data *ch, char *name, int *number, struct obj_data *list)
 {
-  struct obj_data *i;
+  struct obj_data *i, *last = NULL;
   int num;
 
   if (!number) {
@@ -1168,17 +1188,20 @@ struct obj_data *get_obj_in_list_vis(struct char_data *ch, char *name, int *numb
 
   for (i = list; i && *number; i = i->next_content)
     if (isname(name, i->name))
-      if (CAN_SEE_OBJ(ch, i))
-	if (--(*number) == 0)
+      if (CAN_SEE_OBJ(ch, i)) {
+	if (*number == FIND_INDEX_LAST)
+	  last = i;
+	else if (--(*number) == 0)
 	  return (i);
+      }
 
-  return (NULL);
+  return (last);
 }
 
 /* search the entire world for an object, and return a pointer  */
 struct obj_data *get_obj_vis(struct char_data *ch, char *name, int *number)
 {
-  struct obj_data *i;
+  struct obj_data *i, *last = NULL;
   int num;
 
   if (!number) {
@@ -1200,16 +1223,19 @@ struct obj_data *get_obj_vis(struct char_data *ch, char *name, int *number)
   /* ok.. no luck yet. scan the entire obj list   */
   for (i = object_list; i && *number; i = i->next)
     if (isname(name, i->name))
-      if (CAN_SEE_OBJ(ch, i))
-	if (--(*number) == 0)
+      if (CAN_SEE_OBJ(ch, i)) {
+	if (*number == FIND_INDEX_LAST)
+	  last = i;
+	else if (--(*number) == 0)
 	  return (i);
+      }
 
-  return (NULL);
+  return (last);
 }
 
 struct obj_data *get_obj_in_equip_vis(struct char_data *ch, char *arg, int *number, struct obj_data *equipment[])
 {
-  int j, num;
+  int j, num, last = -1;
 
   if (!number) {
     number = &num;
@@ -1220,16 +1246,19 @@ struct obj_data *get_obj_in_equip_vis(struct char_data *ch, char *arg, int *numb
     return (NULL);
 
   for (j = 0; j < NUM_WEARS; j++)
-    if (equipment[j] && CAN_SEE_OBJ(ch, equipment[j]) && isname(arg, equipment[j]->name))
-      if (--(*number) == 0)
+    if (equipment[j] && CAN_SEE_OBJ(ch, equipment[j]) && isname(arg, equipment[j]->name)) {
+      if (*number == FIND_INDEX_LAST)
+        last = j;
+      else if (--(*number) == 0)
         return (equipment[j]);
+    }
 
-  return (NULL);
+  return (last >= 0 ? equipment[last] : NULL);
 }
 
 int get_obj_pos_in_equip_vis(struct char_data *ch, char *arg, int *number, struct obj_data *equipment[])
 {
-  int j, num;
+  int j, num, last = -1;
 
   if (!number) {
     number = &num;
@@ -1240,11 +1269,14 @@ int get_obj_pos_in_equip_vis(struct char_data *ch, char *arg, int *number, struc
     return (-1);
 
   for (j = 0; j < NUM_WEARS; j++)
-    if (equipment[j] && CAN_SEE_OBJ(ch, equipment[j]) && isname(arg, equipment[j]->name))
-      if (--(*number) == 0)
+    if (equipment[j] && CAN_SEE_OBJ(ch, equipment[j]) && isname(arg, equipment[j]->name)) {
+      if (*number == FIND_INDEX_LAST)
+        last = j;
+      else if (--(*number) == 0)
         return (j);
+    }
 
-  return (-1);
+  return (last);
 }
 
 const char *money_desc(int amount)
@@ -1380,11 +1412,15 @@ int generic_find(char *arg, bitvector_t bitvector, struct char_data *ch,
 
   if (IS_SET(bitvector, FIND_OBJ_EQUIP)) {
     for (found = FALSE, i = 0; i < NUM_WEARS && !found; i++)
-      if (GET_EQ(ch, i) && isname(name, GET_EQ(ch, i)->name) && --number == 0) {
-	*tar_obj = GET_EQ(ch, i);
-	found = TRUE;
+      if (GET_EQ(ch, i) && isname(name, GET_EQ(ch, i)->name)) {
+	if (number == FIND_INDEX_LAST)
+	  *tar_obj = GET_EQ(ch, i);	/* keep going; the last one wins */
+	else if (--number == 0) {
+	  *tar_obj = GET_EQ(ch, i);
+	  found = TRUE;
+	}
       }
-    if (found)
+    if (*tar_obj)
       return (FIND_OBJ_EQUIP);
   }
 
