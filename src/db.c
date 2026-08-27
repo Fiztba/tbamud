@@ -791,7 +791,7 @@ void boot_db(void)
 {
   int j;
 
-  for (j = 0 ; j < top_of_objt; j++) {
+  for (j = 0 ; j <= top_of_objt; j++) {
     if (obj_proto[j].script == (struct script_data *)&shop_keeper) {
       log("Item %d (%s) had shopkeeper trouble.", obj_index[j].vnum, obj_proto[j].short_description);
       obj_proto[j].script = NULL;
