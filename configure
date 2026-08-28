@@ -3488,10 +3488,49 @@ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
+
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether ${CC-cc} accepts -std=gnu99" >&5
+printf %s "checking whether ${CC-cc} accepts -std=gnu99... " >&6; }
+if test ${ac_cv_c_std_gnu99+y}
+then :
+  printf %s "(cached) " >&6
+else case e in #(
+  e)
+  OLDCFLAGS=$CFLAGS
+  CFLAGS="$CFLAGS -std=gnu99"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main (void)
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+  ac_cv_c_std_gnu99=yes
+else case e in #(
+  e) ac_cv_c_std_gnu99=no ;;
+esac
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+  CFLAGS=$OLDCFLAGS
+ ;;
+esac
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_c_std_gnu99" >&5
+printf "%s\n" "$ac_cv_c_std_gnu99" >&6; }
+
+if test $ac_cv_c_std_gnu99 = yes; then
+  CFLAGS="$CFLAGS -std=gnu99"
+fi
+
 if test "$GCC" = yes; then
 
-
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether ${CC-cc} -Wall also needs -Wno-char-subscripts" >&5
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether ${CC-cc} -Wall also needs -Wno-char-subscripts" >&5
 printf %s "checking whether ${CC-cc} -Wall also needs -Wno-char-subscripts... " >&6; }
 if test ${ac_cv_char_warn+y}
 then :

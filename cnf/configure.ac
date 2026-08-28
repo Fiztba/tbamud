@@ -36,6 +36,23 @@ AC_CHECK_PROGS(MORE, less most more cat)
 dnl Checks for programs.
 AC_PROG_CC
 
+dnl tbaMUD is written against C89/C99, where `bool' (structs.h) and `false' /
+dnl `true' (protocol.h) are ordinary identifiers.  GCC 15 and Clang 19 default
+dnl to C23, in which all three are keywords, so pin the language the source is
+dnl actually written in.  CMakeLists.txt pins the same one via CMAKE_C_STANDARD.
+AC_CACHE_CHECK(whether ${CC-cc} accepts -std=gnu99, ac_cv_c_std_gnu99,
+[
+  OLDCFLAGS=$CFLAGS
+  CFLAGS="$CFLAGS -std=gnu99"
+  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[]])],
+    ac_cv_c_std_gnu99=yes, ac_cv_c_std_gnu99=no)
+  CFLAGS=$OLDCFLAGS
+])
+
+if test $ac_cv_c_std_gnu99 = yes; then
+  CFLAGS="$CFLAGS -std=gnu99"
+fi
+
 dnl If we're using gcc, use gcc options.
 dnl If not, test for various common switches to make a 'cc' compiler
 dnl compile ANSI C code.
