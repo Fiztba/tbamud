@@ -25,23 +25,6 @@
 #define BAN_ALL   3
 
 #define BANNED_SITE_LENGTH    50
-
-/** Longest ban-type keyword load_banned() will accept.  Narrowing this one is
- * safe in a way that narrowing a name field is not: the values come from the
- * closed ban_types[] table in ban.c, the longest of which is "select", so no
- * file this MUD writes can approach it.  A token that does exceed it is not a
- * ban type at all, and is refused by name below rather than truncated into
- * something that matches nothing. */
-#define BAN_TYPE_FIELD        15
-
-/* The three string fields of a ban record, each bounded by the array that
- * receives it -- see SCANF_WIDTH in utils.h.  load_banned() reads straight out
- * of the FILE before this; with no line buffer in the way there was nothing at
- * all bounding a site or a name. */
-#define BAN_TYPE_FMT          "%" SCANF_WIDTH(BAN_TYPE_FIELD) "s"
-#define BAN_SITE_FMT          "%" SCANF_WIDTH(BANNED_SITE_LENGTH) "s"
-#define BAN_NAME_FMT          "%" SCANF_WIDTH(MAX_NAME_LENGTH) "s"
-
 struct ban_list_element {
    char site[BANNED_SITE_LENGTH+1];
    int  type;
