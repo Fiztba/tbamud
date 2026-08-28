@@ -111,3 +111,13 @@ add_mud_test(test_lists
     ${MUD_SRCDIR}/random.c
     ${CMAKE_CURRENT_SOURCE_DIR}/test_lists.c
 )
+
+# ---------------------------------------------------------------------------
+# test_improved_edit — covers format_text() and replace_str() in src/improved-edit.c
+# ---------------------------------------------------------------------------
+add_mud_test(test_improved_edit
+    ${MUD_SRCDIR}/improved-edit.c
+    ${MUD_SRCDIR}/utils.c
+    ${MUD_SRCDIR}/random.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_improved_edit.c
+)
