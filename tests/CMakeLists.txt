@@ -111,3 +111,15 @@ add_mud_test(test_lists
     ${MUD_SRCDIR}/random.c
     ${CMAKE_CURRENT_SOURCE_DIR}/test_lists.c
 )
+
+# ---------------------------------------------------------------------------
+# test_mud_event — covers char_has_mud_event() in src/mud_event.c
+# ---------------------------------------------------------------------------
+add_mud_test(test_mud_event
+    ${MUD_SRCDIR}/mud_event.c
+    ${MUD_SRCDIR}/dg_event.c
+    ${MUD_SRCDIR}/lists.c
+    ${MUD_SRCDIR}/utils.c
+    ${MUD_SRCDIR}/random.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_mud_event.c
+)
