@@ -1385,14 +1385,16 @@ static void eval_op(char *op, char *lhs, char *rhs, char *result, void *go,
   while (*rhs && isspace(*rhs))
     rhs++;
 
-  /* Test the bound before dereferencing.  On an empty operand the scan
-   * above stops on the terminator, --p then steps in front of the buffer,
-   * and reading *p there is out of bounds.  Both tests were already here,
-   * only in the order that reads first. */
+  /* Each walk lands p on the NUL, so the strip loop below starts at --p.
+   * On an empty operand that is one byte before the string, and isspace()
+   * reads it before the `p > lhs' half of the condition can rule it out.
+   * Enter the loop only when there is a character to strip. */
   for (p = (unsigned char *) lhs; *p; p++);
-  for (--p; ((char *)p > lhs) && isspace(*p); *p-- = '\0');
+  if ((char *)p > lhs)
+    for (--p; isspace(*p) && ((char *)p > lhs); *p-- = '\0');
   for (p = (unsigned char *) rhs; *p; p++);
-  for (--p; ((char *)p > rhs) && isspace(*p); *p-- = '\0');
+  if ((char *)p > rhs)
+    for (--p; isspace(*p) && ((char *)p > rhs); *p-- = '\0');
 
 
   /* find the op, and figure out the value */
