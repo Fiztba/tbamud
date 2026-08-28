@@ -188,6 +188,20 @@ void test_replace_str_replaces_the_first_occurrence(void)
     free(*p);
 }
 
+/* Both cases above match at offset 0, which is the one offset that makes the
+ * single-replacement path's length arithmetic come out right by accident:
+ * len is the distance to the match, and at offset 0 it is zero however it
+ * is computed.  Match in the middle so the prefix copy is exercised. */
+void test_replace_str_keeps_the_text_either_side_of_a_match(void)
+{
+    char *buf = heap_copy("the quick brown fox jumps");
+    char **p = &buf;
+
+    TEST_ASSERT_EQUAL_INT(1, replace_str(p, "brown", "red", 0, 4096));
+    TEST_ASSERT_EQUAL_STRING("the quick red fox jumps", *p);
+    free(*p);
+}
+
 void test_replace_str_replaces_every_occurrence_when_asked(void)
 {
     char *buf = heap_copy("fox fox fox");
@@ -214,6 +228,7 @@ int main(void)
 
     RUN_TEST(test_replace_str_reports_nothing_when_the_pattern_is_absent);
     RUN_TEST(test_replace_str_replaces_the_first_occurrence);
+    RUN_TEST(test_replace_str_keeps_the_text_either_side_of_a_match);
     RUN_TEST(test_replace_str_replaces_every_occurrence_when_asked);
 
     return UNITY_END();
