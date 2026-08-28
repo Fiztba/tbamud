@@ -33,7 +33,7 @@ STUBS_SRC  = test_stubs.c
 UTILS_SRC  = $(SRCDIR)/utils.c $(SRCDIR)/random.c
 
 # All test binaries
-TESTS = test_utils test_random test_interpreter test_class test_lists
+TESTS = test_utils test_random test_interpreter test_class test_lists test_handler
 
 .PHONY: all test clean
 
@@ -70,6 +70,14 @@ test_class: $(UNITY_SRC) $(STUBS_SRC) $(UTILS_SRC) \
 # ---------------------------------------------------------------------------
 test_lists: $(UNITY_SRC) $(STUBS_SRC) $(UTILS_SRC) \
             $(SRCDIR)/lists.c test_lists.c
+	$(COMPILE) -o $@ $^ $(LIBS)
+
+# ---------------------------------------------------------------------------
+# test_handler — covers the keyword-prefix helpers in src/handler.c
+# (interpreter.c for one_argument, lists.c for the group list handler.c uses)
+# ---------------------------------------------------------------------------
+test_handler: $(UNITY_SRC) $(STUBS_SRC) $(UTILS_SRC) \
+              $(SRCDIR)/handler.c $(SRCDIR)/interpreter.c $(SRCDIR)/lists.c test_handler.c
 	$(COMPILE) -o $@ $^ $(LIBS)
 
 # ---------------------------------------------------------------------------

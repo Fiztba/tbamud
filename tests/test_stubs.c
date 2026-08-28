@@ -44,6 +44,8 @@ struct room_data          *world            = NULL;
 room_rnum                  top_of_world     = 0;
 struct weather_data        weather_info;          /* zero-init */
 struct char_data          *character_list   = NULL;
+struct obj_data           *object_list      = NULL;
+struct obj_data           *obj_proto        = NULL;
 struct index_data         *mob_index        = NULL;
 struct index_data         *obj_index        = NULL;
 mob_rnum                   top_of_mobt      = 0;
@@ -63,6 +65,9 @@ time_t                     newsmod          = 0;
 ush_int r_mortal_start_room = 0;
 ush_int r_immort_start_room = 0;
 ush_int r_frozen_start_room = 0;
+
+/* fight.c */
+struct char_data          *combat_list      = NULL;
 
 /* config.c */
 int selfdelete_fastwipe = 0;
@@ -107,6 +112,11 @@ void echo_off(struct descriptor_data *d) { (void)d; }
 
 __attribute__((weak))
 void echo_on(struct descriptor_data *d) { (void)d; }
+
+__attribute__((weak))
+void send_to_group(struct char_data *ch, struct group_data *group,
+                   const char *msg, ...)
+{ (void)ch; (void)group; (void)msg; }
 
 /* ---------- modify.c ---------- */
 __attribute__((weak))
@@ -157,6 +167,10 @@ void set_title(struct char_data *ch, char *title) { (void)ch; (void)title; }
 __attribute__((weak))
 void spell_level(int spell, int chclass, int level)
 { (void)spell; (void)chclass; (void)level; }
+
+__attribute__((weak))
+int invalid_class(struct char_data *ch, struct obj_data *obj)
+{ (void)ch; (void)obj; return 0; }
 
 /* ---------- players.c ---------- */
 __attribute__((weak))
@@ -212,6 +226,51 @@ int Crash_load(struct char_data *ch) { (void)ch; return 0; }
 
 __attribute__((weak))
 int Crash_delete_file(char *name) { (void)name; return 0; }
+
+__attribute__((weak))
+int Crash_delete_crashfile(struct char_data *ch) { (void)ch; return 0; }
+
+__attribute__((weak))
+struct obj_data *create_obj(void) { return NULL; }
+
+__attribute__((weak))
+void free_obj(struct obj_data *obj) { (void)obj; }
+
+/* ---------- fight.c ---------- */
+__attribute__((weak))
+void stop_fighting(struct char_data *ch) { (void)ch; }
+
+/* ---------- mobact.c ---------- */
+__attribute__((weak))
+void forget(struct char_data *ch, struct char_data *victim)
+{ (void)ch; (void)victim; }
+
+__attribute__((weak))
+void clearMemory(struct char_data *ch) { (void)ch; }
+
+/* ---------- quest.c ---------- */
+__attribute__((weak))
+void autoquest_trigger_check(struct char_data *ch, struct char_data *vict,
+                             struct obj_data *object, int type)
+{ (void)ch; (void)vict; (void)object; (void)type; }
+
+/* ---------- mud_event.c ---------- */
+__attribute__((weak))
+void clear_char_event_list(struct char_data *ch) { (void)ch; }
+
+/* ---------- dg_event.c ---------- */
+__attribute__((weak))
+void event_cancel(struct event *event) { (void)event; }
+
+/* ---------- dg_handler.c ---------- */
+__attribute__((weak))
+void extract_script(void *thing, int type) { (void)thing; (void)type; }
+
+__attribute__((weak))
+void extract_script_mem(struct script_memory *sc) { (void)sc; }
+
+__attribute__((weak))
+void free_proto_script(void *thing, int type) { (void)thing; (void)type; }
 
 /* ---------- ban.c ---------- */
 __attribute__((weak))
