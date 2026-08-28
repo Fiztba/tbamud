@@ -309,7 +309,7 @@ int Crash_delete_crashfile(struct char_data *ch)
       log("SYSERR: checking for crash file %s (3): %s", filename, strerror(errno));
     return FALSE;
   }
-  numread = get_line(fl,line);
+  numread = get_line(fl, line, sizeof(line));
   fclose(fl);
 
   if (numread == FALSE)
@@ -340,7 +340,7 @@ int Crash_clean_file(char *name)
     return FALSE;
   }
 
-  numread = get_line(fl,line);
+  numread = get_line(fl, line, sizeof(line));
   fclose(fl);
   if (numread == FALSE)
     return FALSE;
@@ -405,7 +405,7 @@ void Crash_listrent(struct char_data *ch, char *name)
   }
   len = snprintf(buf, sizeof(buf),"%s\r\n", filename);
 
-  numread = get_line(fl, line);
+  numread = get_line(fl, line, sizeof(line));
 
   /* Oops, can't get the data, punt. */
   if (numread == FALSE) {
@@ -1167,7 +1167,7 @@ obj_save_data *objsave_parse_objects(FILE *fl)
     int num;
 
     /* if the file is done, wrap it all up */
-    if(get_line(fl, line) == FALSE || (*line == '$' && line[1] == '~')) {
+    if(get_line(fl, line, sizeof(line)) == FALSE || (*line == '$' && line[1] == '~')) {
       if (temp == NULL && current->obj == NULL) {
         /* Remove current from list. */
         tempsave = head;
@@ -1381,7 +1381,7 @@ static int Crash_load_objs(struct char_data *ch) {
     return 1;
   }
  
-  if (!get_line(fl, line))
+  if (!get_line(fl, line, sizeof(line)))
     mudlog(NRM, MAX(LVL_IMMORT, GET_INVIS_LEV(ch)), TRUE, "Failed to read player's rent code: %s.", GET_NAME(ch));
   else
     sscanf(line,"%d %d %d %d %d %d",&rentcode, &timed, &netcost,&gold,&account,&nitems);
