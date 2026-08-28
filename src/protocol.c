@@ -536,6 +536,11 @@ const char *ProtocolOutput( descriptor_t *apDescriptor, const char *apData, int 
    const char LinkStop[] = "\033[1z</send>\033[7z";
    bool_t bTerminate = false, bUseMXP = false, bUseMSP = false;
    int i = 0, j = 0; /* Index values */
+   /* Hoisted out of the three blocks below: pCopyFrom is set to point
+    * at Buffer inside them and dereferenced after they close, so the
+    * block-scoped arrays were read out of lifetime. */
+   char Buffer[8] = {'\0'};
+   char BugString[256];
 
    protocol_t *pProtocol = apDescriptor ? apDescriptor->pProtocol : NULL;
    if ( pProtocol == NULL || apData == NULL )
@@ -679,7 +684,7 @@ const char *ProtocolOutput( descriptor_t *apDescriptor, const char *apData, int 
             case '[':
                if ( tolower(apData[++j]) == 'u' )
                {
-                  char Buffer[8] = {'\0'}, BugString[256];
+                  memset(Buffer, 0, sizeof(Buffer));
                   int Index = 0;
                   int Number = 0;
                   bool_t bDone = false, bValid = true;
@@ -730,7 +735,7 @@ const char *ProtocolOutput( descriptor_t *apDescriptor, const char *apData, int 
                }
                else if ( tolower(apData[j]) == 'f' || tolower(apData[j]) == 'b' )
                {
-                  char Buffer[8] = {'\0'}, BugString[256];
+                  memset(Buffer, 0, sizeof(Buffer));
                   int Index = 0;
                   bool_t bDone = false, bValid = true;
 
@@ -766,7 +771,7 @@ const char *ProtocolOutput( descriptor_t *apDescriptor, const char *apData, int 
                }
                else if ( tolower(apData[j]) == 'x' )
                {
-                  char Buffer[8] = {'\0'}, BugString[256];
+                  memset(Buffer, 0, sizeof(Buffer));
                   int Index = 0;
                   bool_t bDone = false, bValid = true;
 
