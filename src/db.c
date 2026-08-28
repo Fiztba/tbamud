@@ -2944,6 +2944,7 @@ int is_empty(zone_rnum zone_nr)
 }
 
 /* Functions of a general utility nature. */
+
 /* read and allocate space for a '~'-terminated string from a given file */
 char *fread_string(FILE *fl, const char *error)
 {
