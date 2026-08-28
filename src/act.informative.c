@@ -1062,7 +1062,10 @@ int search_help(const char *argument, int level)
   int chk, bot, top, mid, minlen;
 
    bot = 0;
-   top = top_of_helpt;
+   /* top_of_helpt is a COUNT: seeding an inclusive bound with it lets the
+    * search probe help_table[top_of_helpt], one past the end, for any
+    * argument that sorts after the last keyword. */
+   top = top_of_helpt - 1;
    minlen = strlen(argument);
 
   while (bot <= top) {

@@ -84,7 +84,10 @@ ACMD(do_oasis_hedit)
   
   OLC_ZNUM(d) = search_help(OLC_STORAGE(d), LVL_IMPL);
 
-  if (help_table[OLC_ZNUM(d)].duplicate) {
+  /* search_help() answers NOWHERE for a keyword with no entry, which is
+   * every `hedit <new keyword>` -- so this has to be asked after the test
+   * below, not before it, or the table is read at index 65535. */
+  if (OLC_ZNUM(d) != NOWHERE && help_table[OLC_ZNUM(d)].duplicate) {
     for (i = 0; i < top_of_helpt; i++)
       if (help_table[i].duplicate == 0 && help_table[i].entry == help_table[OLC_ZNUM(d)].entry) {
         OLC_ZNUM(d) = i;
@@ -218,7 +221,7 @@ void hedit_parse(struct descriptor_data *d, char *arg)
     case 'Y':
       snprintf(buf, sizeof(buf), "OLC: %s edits help for %s.", GET_NAME(d->character),
                OLC_HELP(d)->keywords);
-      mudlog(TRUE, MAX(LVL_BUILDER, GET_INVIS_LEV(d->character)), CMP, "%s", buf);
+      mudlog(CMP, MAX(LVL_BUILDER, GET_INVIS_LEV(d->character)), TRUE, "%s", buf);
       write_to_output(d, "Help saved to disk.\r\n");
       hedit_save_internally(d);
 
@@ -249,10 +252,12 @@ void hedit_parse(struct descriptor_data *d, char *arg)
       for (; OLC_ZNUM(d) < top_of_helpt; OLC_ZNUM(d)++)
         if (is_abbrev(OLC_STORAGE(d), help_table[OLC_ZNUM(d)].keywords))
           break;
-        else
-          OLC_ZNUM(d) = top_of_helpt + 1;
 
-      if (OLC_ZNUM(d) > top_of_helpt) {
+      if (OLC_ZNUM(d) >= top_of_helpt) {
+        /* Out of matches, so this is an add -- and hedit_save_internally()
+         * only appends when the index is NOWHERE.  The old code left it at
+         * top_of_helpt + 2 and the save wrote the table there. */
+        OLC_ZNUM(d) = NOWHERE;
         write_to_output(d, "Do you wish to add the '%s' help file? ",
             OLC_STORAGE(d));
         OLC_MODE(d) = HEDIT_CONFIRM_ADD;
@@ -333,7 +338,7 @@ void hedit_parse(struct descriptor_data *d, char *arg)
 
   case HEDIT_ENTRY:
     /* We will NEVER get here, we hope. */
-    mudlog(TRUE, LVL_BUILDER, BRF, "SYSERR: Reached HEDIT_ENTRY case in parse_hedit");
+    mudlog(BRF, LVL_BUILDER, TRUE, "SYSERR: Reached HEDIT_ENTRY case in parse_hedit");
     break;
 
   case HEDIT_MIN_LEVEL:
@@ -348,7 +353,7 @@ void hedit_parse(struct descriptor_data *d, char *arg)
 
   default:
     /* We should never get here. */
-    mudlog(TRUE, LVL_BUILDER, BRF, "SYSERR: Reached default case in parse_hedit");
+    mudlog(BRF, LVL_BUILDER, TRUE, "SYSERR: Reached default case in parse_hedit");
     break;
   }
 
