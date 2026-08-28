@@ -2441,15 +2441,15 @@ static size_t print_zone_to_buf(char *bufptr, size_t left, zone_rnum zone, int l
 	zone_table[zone].bot, zone_table[zone].top);
         j = k = l = m = n = o = 0;
 
-        for (i = 0; i < top_of_world; i++)
+        for (i = 0; i <= top_of_world; i++)
           if (world[i].number >= zone_table[zone].bot && world[i].number <= zone_table[zone].top)
             j++;
 
-        for (i = 0; i < top_of_objt; i++)
+        for (i = 0; i <= top_of_objt; i++)
           if (obj_index[i].vnum >= zone_table[zone].bot && obj_index[i].vnum <= zone_table[zone].top)
             k++;
 
-        for (i = 0; i < top_of_mobt; i++)
+        for (i = 0; i <= top_of_mobt; i++)
           if (mob_index[i].vnum >= zone_table[zone].bot && mob_index[i].vnum <= zone_table[zone].top)
             l++;
 
@@ -4093,7 +4093,7 @@ static void trg_checkload(struct char_data *ch, trig_vnum tvnum)
     } /*for cmd_no......*/
   }  /*for zone...*/
 
-  for (i = 0; i < top_of_mobt; i++) {
+  for (i = 0; i <= top_of_mobt; i++) {
     if (!mob_proto[i].proto_script)
       continue;
 
@@ -4106,7 +4106,7 @@ static void trg_checkload(struct char_data *ch, trig_vnum tvnum)
       }
   }
 
-  for (j = 0; j < top_of_objt; j++) {
+  for (j = 0; j <= top_of_objt; j++) {
     if (!obj_proto[j].proto_script)
       continue;
 
@@ -4119,7 +4119,7 @@ static void trg_checkload(struct char_data *ch, trig_vnum tvnum)
       }
   }
 
-  for (k = 0;k < top_of_world; k++) {
+  for (k = 0;k <= top_of_world; k++) {
     if (!world[k].proto_script)
       continue;
 

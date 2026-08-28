@@ -2114,23 +2114,15 @@ void close_socket(struct descriptor_data *d)
   free_list(d->events);
 
   /*. Kill any OLC stuff .*/
-  switch (d->connected) {
-    case CON_OEDIT:
-    case CON_REDIT:
-    case CON_ZEDIT:
-    case CON_MEDIT:
-    case CON_SEDIT:
-    case CON_TEDIT:
-    case CON_TRIGEDIT:
-    case CON_AEDIT:
-    case CON_HEDIT:
-    case CON_QEDIT:
-    case CON_MSGEDIT:
-      cleanup_olc(d, CLEANUP_ALL);
-      break;
-    default:
-      break;
-  }
+  /* Every OLC state, without listing them.  utils.h has had IS_IN_OLC() --
+   * the FIRST_OLC_STATE..LAST_OLC_STATE range -- since before any of the
+   * editors this switch kept forgetting, and nothing has ever called it.
+   * Enumerating the states is what left cedit, prefedit and ibtedit out for
+   * as long as they have existed, and the next editor added would have gone
+   * the same way.  The two are equivalent today: the switch listed exactly
+   * CON_OEDIT through CON_MSGEDIT, which is the range. */
+  if (IS_IN_OLC(d))
+    cleanup_olc(d, CLEANUP_ALL);
 
   free(d);
 }
@@ -2454,7 +2446,7 @@ void send_to_range(room_vnum start, room_vnum finish, const char *messg, ...)
   if (messg == NULL)
     return;
 
-  for (j = 0; j < top_of_world; j++) {
+  for (j = 0; j <= top_of_world; j++) {
     if (GET_ROOM_VNUM(j) >= start && GET_ROOM_VNUM(j) <= finish) {
       for (i = world[j].people; i; i = i->next_in_room) {
         if (!i->desc)
