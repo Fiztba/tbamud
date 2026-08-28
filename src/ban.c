@@ -41,8 +41,10 @@ static const char *ban_types[] = {
 void load_banned(void)
 {
   FILE *fl;
-  int i, date;
-  char site_name[BANNED_SITE_LENGTH + 1], ban_type[100];
+  int i, type;
+  long date;
+  char line[READ_SIZE], junk[2];
+  char site_name[BANNED_SITE_LENGTH + 1], ban_type[BAN_TYPE_FIELD + 1];
   char name[MAX_NAME_LENGTH + 1];
   struct ban_list_element *next_node;
 
@@ -55,17 +57,48 @@ void load_banned(void)
       log("   Ban file '%s' doesn't exist.", BAN_FILE);
     return;
   }
-  while (fscanf(fl, " %s %s %d %s ", ban_type, site_name, &date, name) == 4) {
+  /* A line at a time, rather than fields straight out of the FILE.  Scanning
+   * the file directly left the site and the name with nothing bounding them
+   * at all -- no line buffer stood between a 5000-character token and a
+   * fifty-one byte array -- and it made the loop condition do two jobs it
+   * cannot tell apart: `== 4` is both "that was the last record" and "that
+   * record was malformed", so one bad line silently discarded every ban after
+   * it.  Read the line, bound each field to the array that receives it, and
+   * judge the line on its own.  A bad one costs its own entry now, not the
+   * rest of the file.  The writer has always emitted exactly one record per
+   * line, so nothing it produces reads differently. */
+  while (get_line(fl, line)) {
+    /* The trailing %1s is the sentinel: a well-formed record leaves nothing
+     * for it and the count comes back 4.  It matters because a short count is
+     * not the only way this line can be wrong -- an over-long first field
+     * truncates, the site field swallows the remainder, and a numeric site can
+     * still satisfy %ld, reaching four conversions from a shifted parse. */
+    if (sscanf(line, " " BAN_TYPE_FMT " " BAN_SITE_FMT " %ld " BAN_NAME_FMT " %1s",
+	       ban_type, site_name, &date, name, junk) != 4) {
+      log("SYSERR: Malformed line in ban file %s, skipping: %s", BAN_FILE, line);
+      continue;
+    }
+
+    /* Resolved before the node exists, so an unknown keyword costs nothing to
+     * refuse.  It used to fall through this loop leaving the calloc'd type at
+     * zero -- a BAN_NOT entry that sat in the list banning nobody. */
+    for (type = -1, i = BAN_NOT; i <= BAN_ALL; i++)
+      if (!strcmp(ban_type, ban_types[i]))
+	type = i;
+
+    if (type == -1) {
+      log("SYSERR: Unknown ban type '%s' in ban file %s, skipping: %s",
+	  ban_type, BAN_FILE, line);
+      continue;
+    }
+
     CREATE(next_node, struct ban_list_element, 1);
     strncpy(next_node->site, site_name, BANNED_SITE_LENGTH);	/* strncpy: OK (n_n->site:BANNED_SITE_LENGTH+1) */
     next_node->site[BANNED_SITE_LENGTH] = '\0';
     strncpy(next_node->name, name, MAX_NAME_LENGTH);	/* strncpy: OK (n_n->name:MAX_NAME_LENGTH+1) */
     next_node->name[MAX_NAME_LENGTH] = '\0';
     next_node->date = date;
-
-    for (i = BAN_NOT; i <= BAN_ALL; i++)
-      if (!strcmp(ban_type, ban_types[i]))
-	next_node->type = i;
+    next_node->type = type;
 
     next_node->next = ban_list;
     ban_list = next_node;
