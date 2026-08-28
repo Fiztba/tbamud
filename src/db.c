@@ -2485,6 +2485,7 @@ void new_mobile_data(struct char_data *ch)
 struct char_data *read_mobile(mob_vnum nr, int type) /* and mob_rnum */
 {
   mob_rnum i;
+  int j;
   struct char_data *mob;
 
   if (type == VIRTUAL) {
@@ -2501,9 +2502,19 @@ struct char_data *read_mobile(mob_vnum nr, int type) /* and mob_rnum */
   *mob = mob_proto[i];
   mob->next = character_list;
   character_list = mob;
-  
-  new_mobile_data(mob);  
-  
+
+  /* Remember the flags this mob is created with, so that affect bookkeeping
+   * can tell one of them from a flag some spell or item put there.  It is
+   * kept on the mob rather than read back out of the prototype later on,
+   * because the two do drift apart: medit can edit a prototype under a mob
+   * that is already in the world, and %transform% leaves a mob wearing
+   * another prototype's flags while GET_MOB_RNUM() still points at the one it
+   * was loaded from. */
+  for (j = 0; j < AF_ARRAY_MAX; j++)
+    GET_INNATE_AFF(mob)[j] = AFF_FLAGS(mob)[j];
+
+  new_mobile_data(mob);
+
   if (!mob->points.max_hit) {
     mob->points.max_hit = dice(mob->points.hit, mob->points.mana) +
       mob->points.move;
