@@ -30,7 +30,7 @@ static void hedit_disp_menu(struct descriptor_data *);
 static void hedit_setup_new(struct descriptor_data *);
 static void hedit_setup_existing(struct descriptor_data *, int);
 static void hedit_save_to_disk(struct descriptor_data *);
-static void hedit_save_internally(struct descriptor_data *);
+static int hedit_save_internally(struct descriptor_data *);
 
 
 ACMD(do_oasis_hedit)
@@ -144,12 +144,139 @@ static void hedit_setup_existing(struct descriptor_data *d, int rnum)
   OLC_HELP(d)->min_level	= help_table[rnum].min_level;
   OLC_VAL(d) = 0;
 
+  /* How to find this row again if the table is rebuilt underneath the
+   * editor. Both are taken now, before the builder can edit either field.
+   *
+   * The keyword alone is not an identity: a row's keyword is one word, and
+   * the first word of a multi-keyword entry can be another entry's only
+   * keyword. The shipped help file has eleven such collisions -- `spells`
+   * names both its own entry and the first keyword of the magic entry --
+   * and matching on the word alone lands on whichever comes first.
+   *
+   * The text is the entry's identity: load_help strdups it once per entry,
+   * so rows of one entry share a pointer and rows of different entries do
+   * not. Together they separate the two. */
+  OLC_HELP_KEY(d) = str_udup(help_table[rnum].keywords);
+  OLC_HELP_TEXT(d) = str_udup(help_table[rnum].entry);
+
   hedit_disp_menu(d);
 }
 
-static void hedit_save_internally(struct descriptor_data *d)
+/* A write has to land on the entry's primary row: hedit_save_to_disk skips
+ * duplicates, so one that lands on a duplicate never reaches the file. */
+static int hedit_primary_of(int i)
+{
+  int j;
+
+  if (!help_table[i].duplicate)
+    return i;
+  for (j = 0; j < top_of_helpt; j++)
+    if (!help_table[j].duplicate && help_table[j].entry == help_table[i].entry)
+      return j;
+  /* A duplicate with no primary. The table is already wrong; writing here
+   * at least does not reach into another entry. */
+  return i;
+}
+
+/* Find the row this editor opened, in a table that has been rebuilt since it
+ * opened.
+ *
+ * Not by what the builder typed: OLC_STORAGE is a word, and answering 'n' at
+ * the confirm prompt walks forward to the next row that word abbreviates, so
+ * after a walk it names a different entry than the one being edited.
+ *
+ * And not by the row's keyword alone, which was the first thing tried and is
+ * worse than the bug it fixes. A row's keyword is one word, and the first
+ * word of a multi-keyword entry can be another entry's only keyword -- the
+ * shipped file has eleven such collisions. Relocating on the word alone took
+ * whichever came first, so editing the magic entry through `magics` had the
+ * save destroy the separate `spells` entry instead.
+ *
+ * So: the pair, then the keyword alone where it names exactly one row, and
+ * otherwise no answer at all rather than a guess. HEDIT_RELOC_AMBIGUOUS is a
+ * refusal for the caller to report; HEDIT_RELOC_NOTFOUND means the entry is
+ * gone and the save becomes an add. */
+#define HEDIT_RELOC_NOTFOUND	(-1)
+#define HEDIT_RELOC_AMBIGUOUS	(-2)
+
+static int hedit_relocate(struct descriptor_data *d)
+{
+  const char *key = OLC_HELP_KEY(d), *text = OLC_HELP_TEXT(d);
+  int i, n, found, matched = FALSE;
+
+  /* 1. Both. The reload that changed nothing, and every reload that changed
+   *    something else, land here. */
+  if (key && text)
+    for (i = 0; i < top_of_helpt; i++)
+      if (help_table[i].keywords && !strcmp(help_table[i].keywords, key) &&
+          help_table[i].entry && !strcmp(help_table[i].entry, text))
+        return hedit_primary_of(i);
+
+  /* 2. The keyword, if it names exactly one row: somebody edited the text.
+   *
+   *    There is deliberately no rule between these two matching on the
+   *    text alone. load_help puts the keyword line INTO the entry text, so
+   *    text that still matches exactly is text whose keyword line is
+   *    unchanged -- which means the captured keyword is still one of that
+   *    entry's rows, and step 1 has already answered. A rename changes the
+   *    text along with the keywords and lands here or nowhere. */
+  if (key) {
+    for (i = 0, n = 0, found = -1; i < top_of_helpt; i++)
+      if (help_table[i].keywords && !strcmp(help_table[i].keywords, key)) {
+        n++;
+        found = i;
+      }
+    if (n == 1)
+      return hedit_primary_of(found);
+    if (n > 1)
+      matched = TRUE;
+  }
+
+  return matched ? HEDIT_RELOC_AMBIGUOUS : HEDIT_RELOC_NOTFOUND;
+}
+
+/* FALSE means nothing was written and nothing was discarded; the caller says
+ * why and leaves the builder in the editor. */
+static int hedit_save_internally(struct descriptor_data *d)
 {
   struct help_index_element *new_help_table = NULL;
+
+  /* An index into a table that has been rebuilt since the editor opened names
+   * whatever now sits in that slot, so writing through it overwrites an entry
+   * the builder never asked for. Only a help reload can do that while hedit is
+   * open, since hedit refuses a second editor -- `reload xhelp`, `reload all`
+   * and `reload *` all reach free_help_table() + index_boot(DB_BOOT_HLP).
+   *
+   * Take the row again rather than refusing outright: this is the last thing
+   * that runs before the editor is torn down, so a flat refusal would throw
+   * the builder's work away to protect somebody else's. Treating it as new is
+   * not an option either -- a reload that changes nothing still bumps the
+   * counter, and appending then puts a second entry in help.hlp under the same
+   * keyword, which search_help resolves to the older of the two, so the builder
+   * could not reach their own work even by reopening it.
+   *
+   * Only where the row genuinely cannot be identified is the save refused, and
+   * then the version is deliberately left stale: the builder is put back in the
+   * editor, and their next attempt has to come through here again rather than
+   * sail past a guard that has already been satisfied. */
+  if (OLC_HELP_VERSION(d) != help_table_version) {
+    int row = hedit_relocate(d);
+
+    if (row == HEDIT_RELOC_AMBIGUOUS)
+      return FALSE;
+
+    OLC_ZNUM(d) = (row == HEDIT_RELOC_NOTFOUND) ? NOWHERE : row;
+    OLC_HELP_VERSION(d) = help_table_version;
+  }
+
+  /* The write always lands on the entry's primary row, stale index or not.
+   * hedit_save_to_disk skips duplicates, so a builder who reached one with 'n'
+   * at the confirm prompt had their min_level change written nowhere at all --
+   * only the entry text survived, and only because the pass below carries it
+   * to the primary by hand. */
+  if (OLC_ZNUM(d) != NOWHERE && OLC_ZNUM(d) < top_of_helpt)
+    OLC_ZNUM(d) = hedit_primary_of(OLC_ZNUM(d));
+  OLC_HELP(d)->duplicate = 0;
 
   if (OLC_ZNUM(d) == NOWHERE) {
     int i;
@@ -193,6 +320,7 @@ static void hedit_save_internally(struct descriptor_data *d)
 
   add_to_save_list(HEDIT_PERMISSION, SL_HLP);
   hedit_save_to_disk(d);
+  return TRUE;
 }
 
 static void hedit_save_to_disk(struct descriptor_data *d)
@@ -355,11 +483,33 @@ void hedit_parse(struct descriptor_data *d, char *arg)
     switch (*arg) {
     case 'y':
     case 'Y':
+      /* Formatted before the save, emitted after it. Both halves matter.
+       *
+       * After, because the save can decline: the old order logged the edit
+       * and told the builder it had reached disk before the write was even
+       * attempted.
+       *
+       * Before, because by the time the save returns this string is gone.
+       * hedit_save_internally hands OLC_HELP's strings to the table and
+       * hedit_save_to_disk ends by rebooting the table from the file, and
+       * free_help_table() frees every row's keywords on the way -- these
+       * among them. Reading them afterwards formats freed heap, with
+       * index_boot reallocating in between.
+       *
+       * The refusal path returns before the mudlog, so nothing is logged
+       * for a save that did not happen. */
       snprintf(buf, sizeof(buf), "OLC: %s edits help for %s.", GET_NAME(d->character),
                OLC_HELP(d)->keywords);
+      if (!hedit_save_internally(d)) {
+        write_to_output(d, "The help files were reloaded while you were editing, and more "
+                           "than one entry now answers to what you opened. Writing to the "
+                           "wrong one would destroy an entry you never touched, so nothing "
+                           "has been saved. Your work is still here.\r\n");
+        hedit_disp_menu(d);
+        return;
+      }
       mudlog(TRUE, MAX(LVL_BUILDER, GET_INVIS_LEV(d->character)), CMP, "%s", buf);
       write_to_output(d, "Help saved to disk.\r\n");
-      hedit_save_internally(d);
 
       /* Do not free strings, just the help structure. */
       cleanup_olc(d, CLEANUP_STRUCTS);
@@ -376,6 +526,22 @@ void hedit_parse(struct descriptor_data *d, char *arg)
     return;
 
   case HEDIT_CONFIRM_EDIT:
+    /* Above the switch, not inside one arm of it. All three arms read
+     * help_table[OLC_ZNUM(d)] -- 'y' to fill the editor, 'n' to walk to the
+     * next match, and the reprompt to name the entry -- and the index they
+     * share was taken before a reload could move it. The reprompt is the one
+     * a builder is most likely to reach, since a bare RETURN lands there.
+     *
+     * Refusing costs nothing here: nothing has been typed yet. That is why
+     * this says so and stops, where the save -- which runs after the work is
+     * done -- goes looking for the row instead. */
+    if (OLC_HELP_VERSION(d) != help_table_version) {
+      write_to_output(d, "The help files were reloaded while you were deciding, so "
+                         "that is not necessarily the entry you asked for any more. "
+                         "Nothing has been changed; run hedit again.\r\n");
+      cleanup_olc(d, CLEANUP_ALL);
+      return;
+    }
     switch (*arg)  {
     case 'y': case 'Y':
       hedit_setup_existing(d, OLC_ZNUM(d));
