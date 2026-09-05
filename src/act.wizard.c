@@ -4544,7 +4544,7 @@ ACMD(do_changelog)
   char timestr[12], line[READ_SIZE], last_buf[READ_SIZE],
       buf[READ_SIZE];
   FILE *fl, *new;
-  int found_header = FALSE;
+  int found_header = FALSE, bad;
 
   *last_buf = '\0';
 
@@ -4559,6 +4559,7 @@ ACMD(do_changelog)
   if (rename(CHANGE_LOG_FILE, buf)) {
     mudlog(BRF, LVL_IMPL, TRUE,
            "SYSERR: Error making backup changelog file (%s)", buf);
+    send_to_char(ch, "Could not set the changelog aside; nothing was changed.\r\n");
     return;
   }
 
@@ -4568,9 +4569,12 @@ ACMD(do_changelog)
     /* The rename above has already moved the changelog, so this returns
      * with nothing under its own name -- the same loss as the branch
      * below, one open earlier. */
-    if (rename(buf, CHANGE_LOG_FILE))
+    if (rename(buf, CHANGE_LOG_FILE)) {
       mudlog(BRF, LVL_IMPL, TRUE,
              "SYSERR: Changelog left as %s; could not restore it", buf);
+      send_to_char(ch, "Could not read the changelog, and it is left as %s.\r\n", buf);
+      return;
+    }
     send_to_char(ch, "Could not read the changelog.\r\n");
     return;
   }
@@ -4581,9 +4585,13 @@ ACMD(do_changelog)
     /* The changelog was renamed to the backup above, so returning here
      * leaves nothing under its own name at all.  Put it back. */
     fclose(fl);
-    if (rename(buf, CHANGE_LOG_FILE))
+    if (rename(buf, CHANGE_LOG_FILE)) {
       mudlog(BRF, LVL_IMPL, TRUE,
              "SYSERR: Changelog left as %s; could not restore it", buf);
+      send_to_char(ch, "Could not open the changelog for writing; it is left as %s.\r\n",
+                   buf);
+      return;
+    }
     send_to_char(ch, "Could not open the changelog for writing.\r\n");
     return;
   }
@@ -4617,14 +4625,39 @@ ACMD(do_changelog)
   /* A write that fails reports itself at the flush or the close, and the
    * entries before it have only reached the stream's buffer.  Neither was
    * looked at, so a full disk truncated the changelog and the immortal was
-   * told the change had been added.  The backup is still beside it, which
-   * is the one thing that makes this recoverable, so say where it is. */
-  if (fflush(new) == EOF || ferror(new) || fclose(new) == EOF) {
+   * told the change had been added.
+   *
+   * fclose() is tested on its own rather than as the third arm of an ||,
+   * because || stops at the first arm that is true: a failing fflush --
+   * the ordinary full-disk case, and the one this exists for -- would
+   * skip it and leak the stream.
+   *
+   * buf held the backup's name until the header was built into it above,
+   * so build it again.  Put the backup back rather than only naming it:
+   * the rename needs no free space, and leaving the truncation in place
+   * means the next changelog renames it over the backup and reports
+   * success, taking the history with it. */
+  bad = (fflush(new) == EOF || ferror(new));
+  if (fclose(new) == EOF)
+    bad = TRUE;
+
+  if (bad) {
+    snprintf(buf, sizeof(buf), "%s.bak", CHANGE_LOG_FILE);
     mudlog(BRF, LVL_IMPL, TRUE,
-           "SYSERR: Error writing changelog (%s); the previous one is at %s.bak",
-           CHANGE_LOG_FILE, CHANGE_LOG_FILE);
-    send_to_char(ch, "The changelog could not be written; the previous one is kept as %s.bak\r\n",
-                 CHANGE_LOG_FILE);
+           "SYSERR: Error writing changelog (%s); restoring it from %s",
+           CHANGE_LOG_FILE, buf);
+    if (rename(buf, CHANGE_LOG_FILE)) {
+      remove(CHANGE_LOG_FILE);
+      if (rename(buf, CHANGE_LOG_FILE)) {
+        mudlog(BRF, LVL_IMPL, TRUE,
+               "SYSERR: Changelog left as %s; could not restore it", buf);
+        send_to_char(ch, "The changelog could not be written, and the previous "
+                         "one is left as %s.\r\n", buf);
+        return;
+      }
+    }
+    send_to_char(ch, "The changelog could not be written. The previous one has "
+                     "been put back, and your entry was not added.\r\n");
     return;
   }
 
