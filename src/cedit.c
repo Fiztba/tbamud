@@ -65,11 +65,14 @@ ACMD(do_oasis_cedit)
     return;
   }
 
-  send_to_char(ch, "Saving the game configuration.\r\n");
   mudlog(CMP, MAX(LVL_BUILDER, GET_INVIS_LEV(ch)), TRUE,
     "OLC: %s saves the game configuration.", GET_NAME(ch));
 
-  cedit_save_to_disk();
+  if (cedit_save_to_disk())
+    send_to_char(ch, "Game configuration saved.\r\n");
+  else
+    send_to_char(ch, "The game configuration could not be written; see the "
+                     "syslog.\r\n");
 }
 
 static void cedit_setup(struct descriptor_data *d)
@@ -308,10 +311,10 @@ static void cedit_save_internally(struct descriptor_data *d)
   add_to_save_list(NOWHERE, SL_CFG);
 }
 
-void cedit_save_to_disk( void )
+int cedit_save_to_disk( void )
 {
   /* Just call save_config and get it over with. */
-  save_config( NOWHERE );
+  return save_config( NOWHERE );
 }
 
 int save_config( IDXTYPE nowhere )
@@ -326,14 +329,15 @@ int save_config( IDXTYPE nowhere )
    * writes nor the close were looked at -- so a save that failed part way
    * returned TRUE over a config file the next boot would read as far as
    * the damage and no further. */
-  /* CONFIG_CONFFILE is whatever was passed to -c, so it has no length known
+  /* CONFIG_CONFFILE is whatever was passed to -f, so it has no length known
    * here.  Sizing the scratch name from a fixed buffer would refuse a save
    * that the plain open would have managed, so take it from the name. */
   CREATE(tmp_name, char, strlen(CONFIG_CONFFILE) + 5);
   sprintf(tmp_name, "%s.tmp", CONFIG_CONFFILE); /* sprintf: OK, sized above */
 
   if (!(fl = fopen(tmp_name, "w"))) {
-    perror("SYSERR: save_config");
+    mudlog(BRF, LVL_BUILDER, TRUE,
+           "SYSERR: save_config: could not open %s: %s", tmp_name, strerror(errno));
     free(tmp_name);
     return (FALSE);
   }
@@ -594,11 +598,14 @@ int save_config( IDXTYPE nowhere )
     int err = errno;
 
     if (err)
-      log("SYSERR: save_config: error writing %s: %s", tmp_name, strerror(err));
+      mudlog(BRF, LVL_BUILDER, TRUE,
+             "SYSERR: save_config: error writing %s: %s", tmp_name, strerror(err));
     else
-      log("SYSERR: save_config: error writing %s", tmp_name);
+      mudlog(BRF, LVL_BUILDER, TRUE,
+             "SYSERR: save_config: error writing %s", tmp_name);
     fclose(fl);
-    remove(tmp_name);
+    if (!CONFIG_DEBUG_MODE)
+      remove(tmp_name);
     free(tmp_name);
     return (FALSE);
   }
@@ -607,10 +614,13 @@ int save_config( IDXTYPE nowhere )
     int err = errno;
 
     if (err)
-      log("SYSERR: save_config: error closing %s: %s", tmp_name, strerror(err));
+      mudlog(BRF, LVL_BUILDER, TRUE,
+             "SYSERR: save_config: error closing %s: %s", tmp_name, strerror(err));
     else
-      log("SYSERR: save_config: error closing %s", tmp_name);
-    remove(tmp_name);
+      mudlog(BRF, LVL_BUILDER, TRUE,
+             "SYSERR: save_config: error closing %s", tmp_name);
+    if (!CONFIG_DEBUG_MODE)
+      remove(tmp_name);
     free(tmp_name);
     return (FALSE);
   }
@@ -618,12 +628,15 @@ int save_config( IDXTYPE nowhere )
   /* rename() replaces the destination outright on POSIX, so the config
    * file is never briefly absent; the Windows C runtime refuses a name
    * that already exists, which is what the retry is for.
-   * dg_olc.c:805-807 installs trigger files the same way. */
+   * trigedit_write_zone() installs trigger files the same way. */
   if (rename(tmp_name, CONFIG_CONFFILE)) {
     remove(CONFIG_CONFFILE);
     if (rename(tmp_name, CONFIG_CONFFILE)) {
-      log("SYSERR: save_config: could not put %s in place: %s", CONFIG_CONFFILE, strerror(errno));
-      remove(tmp_name);
+      mudlog(BRF, LVL_BUILDER, TRUE,
+             "SYSERR: save_config: could not put %s in place: %s",
+             CONFIG_CONFFILE, strerror(errno));
+      if (!CONFIG_DEBUG_MODE)
+        remove(tmp_name);
       free(tmp_name);
       return (FALSE);
     }
@@ -880,8 +893,11 @@ void cedit_parse(struct descriptor_data *d, char *arg)
                  "OLC: %s modifies the game configuration.", GET_NAME(d->character));
           cleanup_olc(d, CLEANUP_CONFIG);
 	  if (CONFIG_AUTO_SAVE) {
-	    cedit_save_to_disk();
-	    write_to_output(d, "Game configuration saved to disk.\r\n");
+	    if (cedit_save_to_disk())
+	      write_to_output(d, "Game configuration saved to disk.\r\n");
+	    else
+	      write_to_output(d, "Game configuration saved to memory; it could "
+	                         "not be written to disk.\r\n");
 	  } else
             write_to_output(d, "Game configuration saved to memory.\r\n");
           return;
