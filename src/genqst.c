@@ -294,7 +294,7 @@ int save_quests(zone_rnum zone_num)
         zone_table[zone_num].number,
  genolc_zone_bottom(zone_num), zone_table[zone_num].top);
 
-  snprintf(filename, sizeof(filename), "%s/%d.new",
+  snprintf(filename, sizeof(filename), "%s%d.new",
  QST_PREFIX, zone_table[zone_num].number);
   if (!(sf = fopen(filename, "w"))) {
     perror("SYSERR: save_quests");
@@ -400,10 +400,24 @@ int save_quests(zone_rnum zone_num)
   }
 
   /* Old file we're replacing. */
-  snprintf(oldname, sizeof(oldname), "%s/%d.qst",
+  snprintf(oldname, sizeof(oldname), "%s%d.qst",
            QST_PREFIX, zone_table[zone_num].number);
-  remove(oldname);
-  rename(filename, oldname);
+
+  /* rename() replaces the destination outright on POSIX, so the old file
+   * is never briefly absent; the Windows C runtime refuses a name that
+   * already exists, which is what the retry is for.  trigedit_write_zone()
+   * installs trigger files the same way. */
+  if (rename(filename, oldname)) {
+    remove(oldname);
+    if (rename(filename, oldname)) {
+      mudlog(BRF, LVL_BUILDER, TRUE,
+             "SYSERR: Could not put the quest file %s in place: %s",
+             oldname, strerror(errno));
+      if (!CONFIG_DEBUG_MODE)
+        remove(filename);
+      return FALSE;
+    }
+  }
 
   /* Do we need to update the index file? */
   if (num_quests > 0)
