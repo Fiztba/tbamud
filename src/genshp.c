@@ -673,7 +673,8 @@ int save_shops(zone_rnum zone_num)
    * This is the shape save_quests() already uses. */
   if (fflush(shop_file) == EOF || ferror(shop_file)) {
     mudlog(BRF, LVL_BUILDER, TRUE,
-           "SYSERR: Error writing shop file %s.", fname);
+           "SYSERR: Error writing shop file %s: %s",
+           fname, strerror(errno));
     fclose(shop_file);
     if (!CONFIG_DEBUG_MODE)
       remove(fname);
@@ -682,7 +683,8 @@ int save_shops(zone_rnum zone_num)
 
   if (fclose(shop_file) == EOF) {
     mudlog(BRF, LVL_BUILDER, TRUE,
-           "SYSERR: Error closing shop file %s.", fname);
+           "SYSERR: Error closing shop file %s: %s",
+           fname, strerror(errno));
     if (!CONFIG_DEBUG_MODE)
       remove(fname);
     return FALSE;
@@ -697,7 +699,8 @@ int save_shops(zone_rnum zone_num)
     remove(oldname);
     if (rename(fname, oldname)) {
       mudlog(BRF, LVL_BUILDER, TRUE,
-             "SYSERR: Could not put the shop file %s in place.", oldname);
+             "SYSERR: Could not put the shop file %s in place: %s",
+           oldname, strerror(errno));
       if (!CONFIG_DEBUG_MODE)
         remove(fname);
       return FALSE;

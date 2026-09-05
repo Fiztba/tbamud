@@ -295,7 +295,8 @@ int save_objects(zone_rnum zone_num)
    * This is the shape save_quests() already uses. */
   if (fflush(fp) == EOF || ferror(fp)) {
     mudlog(BRF, LVL_BUILDER, TRUE,
-           "SYSERR: Error writing object file %s.", filename);
+           "SYSERR: Error writing object file %s: %s",
+           filename, strerror(errno));
     fclose(fp);
     if (!CONFIG_DEBUG_MODE)
       remove(filename);
@@ -304,7 +305,8 @@ int save_objects(zone_rnum zone_num)
 
   if (fclose(fp) == EOF) {
     mudlog(BRF, LVL_BUILDER, TRUE,
-           "SYSERR: Error closing object file %s.", filename);
+           "SYSERR: Error closing object file %s: %s",
+           filename, strerror(errno));
     if (!CONFIG_DEBUG_MODE)
       remove(filename);
     return FALSE;
@@ -319,7 +321,8 @@ int save_objects(zone_rnum zone_num)
     remove(buf);
     if (rename(filename, buf)) {
       mudlog(BRF, LVL_BUILDER, TRUE,
-             "SYSERR: Could not put the object file %s in place.", buf);
+             "SYSERR: Could not put the object file %s in place: %s",
+           buf, strerror(errno));
       if (!CONFIG_DEBUG_MODE)
         remove(filename);
       return FALSE;

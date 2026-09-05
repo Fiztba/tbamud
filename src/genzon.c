@@ -292,7 +292,8 @@ void create_world_index(int znum, const char *type)
    * silently drops zones from the world at the next reboot. */
   if (fflush(newfile) == EOF || ferror(newfile)) {
     mudlog(BRF, LVL_IMPL, TRUE,
-           "SYSERR: OLC: Error writing %s.", new_name);
+           "SYSERR: OLC: Error writing %s: %s",
+           new_name, strerror(errno));
     fclose(newfile);
     if (!CONFIG_DEBUG_MODE)
       remove(new_name);
@@ -300,7 +301,8 @@ void create_world_index(int znum, const char *type)
   }
   if (fclose(newfile) == EOF) {
     mudlog(BRF, LVL_IMPL, TRUE,
-           "SYSERR: OLC: Error closing %s.", new_name);
+           "SYSERR: OLC: Error closing %s: %s",
+           new_name, strerror(errno));
     if (!CONFIG_DEBUG_MODE)
       remove(new_name);
     return;
@@ -313,7 +315,8 @@ void create_world_index(int znum, const char *type)
     remove(old_name);
     if (rename(new_name, old_name)) {
       mudlog(BRF, LVL_IMPL, TRUE,
-             "SYSERR: OLC: Could not put %s in place.", old_name);
+             "SYSERR: OLC: Could not put %s in place: %s",
+           old_name, strerror(errno));
       if (!CONFIG_DEBUG_MODE)
         remove(new_name);
     }
@@ -515,7 +518,8 @@ int save_zone(zone_rnum zone_num)
    * This is the shape save_quests() already uses. */
   if (fflush(zfile) == EOF || ferror(zfile)) {
     mudlog(BRF, LVL_BUILDER, TRUE,
-           "SYSERR: Error writing zone file %s.", fname);
+           "SYSERR: Error writing zone file %s: %s",
+           fname, strerror(errno));
     fclose(zfile);
     if (!CONFIG_DEBUG_MODE)
       remove(fname);
@@ -524,7 +528,8 @@ int save_zone(zone_rnum zone_num)
 
   if (fclose(zfile) == EOF) {
     mudlog(BRF, LVL_BUILDER, TRUE,
-           "SYSERR: Error closing zone file %s.", fname);
+           "SYSERR: Error closing zone file %s: %s",
+           fname, strerror(errno));
     if (!CONFIG_DEBUG_MODE)
       remove(fname);
     return FALSE;
@@ -539,7 +544,8 @@ int save_zone(zone_rnum zone_num)
     remove(oldname);
     if (rename(fname, oldname)) {
       mudlog(BRF, LVL_BUILDER, TRUE,
-             "SYSERR: Could not put the zone file %s in place.", oldname);
+             "SYSERR: Could not put the zone file %s in place: %s",
+           oldname, strerror(errno));
       if (!CONFIG_DEBUG_MODE)
         remove(fname);
       return FALSE;

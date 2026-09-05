@@ -455,7 +455,8 @@ int save_rooms(zone_rnum rzone)
    * This is the shape save_quests() already uses. */
   if (fflush(sf) == EOF || ferror(sf)) {
     mudlog(BRF, LVL_BUILDER, TRUE,
-           "SYSERR: Error writing room file %s.", filename);
+           "SYSERR: Error writing room file %s: %s",
+           filename, strerror(errno));
     fclose(sf);
     if (!CONFIG_DEBUG_MODE)
       remove(filename);
@@ -464,7 +465,8 @@ int save_rooms(zone_rnum rzone)
 
   if (fclose(sf) == EOF) {
     mudlog(BRF, LVL_BUILDER, TRUE,
-           "SYSERR: Error closing room file %s.", filename);
+           "SYSERR: Error closing room file %s: %s",
+           filename, strerror(errno));
     if (!CONFIG_DEBUG_MODE)
       remove(filename);
     return FALSE;
@@ -481,7 +483,8 @@ int save_rooms(zone_rnum rzone)
     remove(buf);
     if (rename(filename, buf)) {
       mudlog(BRF, LVL_BUILDER, TRUE,
-             "SYSERR: Could not put the room file %s in place.", buf);
+             "SYSERR: Could not put the room file %s in place: %s",
+           buf, strerror(errno));
       if (!CONFIG_DEBUG_MODE)
         remove(filename);
       return FALSE;

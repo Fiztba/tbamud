@@ -360,7 +360,8 @@ int save_mobiles(zone_rnum rznum)
   written = ftell(mobfd);
   if (fflush(mobfd) == EOF || ferror(mobfd)) {
     mudlog(BRF, LVL_BUILDER, TRUE,
-           "SYSERR: Error writing mobile file %s.", mobfname);
+           "SYSERR: Error writing mobile file %s: %s",
+           mobfname, strerror(errno));
     fclose(mobfd);
     if (!CONFIG_DEBUG_MODE)
       remove(mobfname);
@@ -369,7 +370,8 @@ int save_mobiles(zone_rnum rznum)
 
   if (fclose(mobfd) == EOF) {
     mudlog(BRF, LVL_BUILDER, TRUE,
-           "SYSERR: Error closing mobile file %s.", mobfname);
+           "SYSERR: Error closing mobile file %s: %s",
+           mobfname, strerror(errno));
     if (!CONFIG_DEBUG_MODE)
       remove(mobfname);
     return FALSE;
@@ -384,7 +386,8 @@ int save_mobiles(zone_rnum rznum)
     remove(usedfname);
     if (rename(mobfname, usedfname)) {
       mudlog(BRF, LVL_BUILDER, TRUE,
-             "SYSERR: Could not put the mobile file %s in place.", usedfname);
+             "SYSERR: Could not put the mobile file %s in place: %s",
+           usedfname, strerror(errno));
       if (!CONFIG_DEBUG_MODE)
         remove(mobfname);
       return FALSE;
