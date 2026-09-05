@@ -581,7 +581,7 @@ int save_shops(zone_rnum zone_num)
 {
   int i, j, rshop, num_shops = 0;
   FILE *shop_file;
-  char fname[128], oldname[128], buf[MAX_STRING_LENGTH];
+  char fname[128], oldname[128];
   struct shop_data *shop;
 
 #if CIRCLE_UNSIGNED_INDEX
@@ -628,36 +628,35 @@ int save_shops(zone_rnum zone_num)
 
       /* Save messages. Added some defaults as sanity checks.
        *
-       * Seven strings into one MAX_STRING_LENGTH buffer.  sedit sets them
-       * from single-line input, so through the editor they cannot reach it;
-       * a .shp file edited by hand has no such limit, and sprintf was not
-       * looking. */
-      snprintf(buf, sizeof(buf),
-	      "%s~\n"
-	      "%s~\n"
-	      "%s~\n"
-	      "%s~\n"
-	      "%s~\n"
-	      "%s~\n"
-	      "%s~\n"
-	      "%d\n"
-	      "%ld\n"
-	      "%d\n"
-	      "%d\n",
-	      S_NOITEM1(shop) ? S_NOITEM1(shop) : "%s Ke?!",
-	      S_NOITEM2(shop) ? S_NOITEM2(shop) : "%s Ke?!",
-	      S_NOBUY(shop) ? S_NOBUY(shop) : "%s Ke?!",
-	      S_NOCASH1(shop) ? S_NOCASH1(shop) : "%s Ke?!",
-	      S_NOCASH2(shop) ? S_NOCASH2(shop) : "%s Ke?!",
-	      S_BUY(shop) ? S_BUY(shop) : "%s Ke?! %d?",
-	      S_SELL(shop) ? S_SELL(shop) : "%s Ke?! %d?",
-	      S_BROKE_TEMPER(shop),
-	      S_BITVECTOR(shop),
-	      S_KEEPER(shop) == NOBODY ? -1 : mob_index[S_KEEPER(shop)].vnum,
-	      S_NOTRADE(shop)
-	      );
-        
-        fputs(convert_from_tabs(buf), shop_file);
+       * One string per call, because convert_from_tabs() hands back a
+       * single static buffer and the next call overwrites it.  These used
+       * to be assembled into one MAX_STRING_LENGTH buffer first, which put
+       * a bound on the seven together that the .shp format does not have:
+       * read_shop_message() accepts up to MAX_STRING_LENGTH for each of
+       * them on its own.  Writing them one at a time removes the bound
+       * rather than measuring it, so nothing has to be truncated. */
+      fprintf(shop_file, "%s~\n",
+              convert_from_tabs(S_NOITEM1(shop) ? S_NOITEM1(shop) : "%s Ke?!"));
+      fprintf(shop_file, "%s~\n",
+              convert_from_tabs(S_NOITEM2(shop) ? S_NOITEM2(shop) : "%s Ke?!"));
+      fprintf(shop_file, "%s~\n",
+              convert_from_tabs(S_NOBUY(shop) ? S_NOBUY(shop) : "%s Ke?!"));
+      fprintf(shop_file, "%s~\n",
+              convert_from_tabs(S_NOCASH1(shop) ? S_NOCASH1(shop) : "%s Ke?!"));
+      fprintf(shop_file, "%s~\n",
+              convert_from_tabs(S_NOCASH2(shop) ? S_NOCASH2(shop) : "%s Ke?!"));
+      fprintf(shop_file, "%s~\n",
+              convert_from_tabs(S_BUY(shop) ? S_BUY(shop) : "%s Ke?! %d?"));
+      fprintf(shop_file, "%s~\n",
+              convert_from_tabs(S_SELL(shop) ? S_SELL(shop) : "%s Ke?! %d?"));
+      fprintf(shop_file, "%d\n"
+                         "%ld\n"
+                         "%d\n"
+                         "%d\n",
+              S_BROKE_TEMPER(shop),
+              S_BITVECTOR(shop),
+              S_KEEPER(shop) == NOBODY ? -1 : mob_index[S_KEEPER(shop)].vnum,
+              S_NOTRADE(shop));
 
       /* Save the rooms. */
       for (j = 0;S_ROOM(shop, j) != NOWHERE; j++)

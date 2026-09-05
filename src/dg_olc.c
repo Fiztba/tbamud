@@ -164,21 +164,33 @@ void trigedit_setup_existing(struct descriptor_data *d, int rtrg_num)
 {
   struct trig_data *trig;
   struct cmdlist_element *c;
+  size_t len;
   /* Allocate a scratch trigger structure. */
   CREATE(trig, struct trig_data, 1);
 
   trig_data_copy(trig, trig_index[rtrg_num]->proto);
 
-  /* convert cmdlist to a char string */
-  c = trig->cmdlist;
-  CREATE(OLC_STORAGE(d), char, MAX_CMD_LENGTH);
-  strcpy(OLC_STORAGE(d), "");
+  /* Convert cmdlist to a char string.  Size the buffer from the script,
+   * not from the editor's cap: a trigger read from a .trg file carries no
+   * cap at all, and the strcat() pair below measured nothing, so merely
+   * opening such a trigger to look at it wrote past the allocation.  It
+   * needs two bytes a line more than the writer does, so it overflows
+   * before the writer ever would.  Never go below MAX_CMD_LENGTH, so a
+   * builder keeps the same room to type into as before. */
+  len = 1;
+  for (c = trig->cmdlist; c; c = c->next)
+    len += (c->cmd ? strlen(c->cmd) : 0) + 2;
+  if (len < MAX_CMD_LENGTH)
+    len = MAX_CMD_LENGTH;
 
-  while (c)
+  CREATE(OLC_STORAGE(d), char, len);
+  *OLC_STORAGE(d) = '\0';
+
+  for (c = trig->cmdlist; c; c = c->next)
   {
-    strcat(OLC_STORAGE(d), c->cmd);
+    if (c->cmd)
+      strcat(OLC_STORAGE(d), c->cmd);
     strcat(OLC_STORAGE(d), "\r\n");
-    c = c->next;
   }
   /* Now trig->cmdlist is something to pass to the text editor it will be 
    * converted back to a real cmdlist_element list later. */
@@ -726,8 +738,7 @@ static int trigedit_write_zone(zone_rnum zrnum, int invis_lev)
   struct trig_data *trig;
   struct cmdlist_element *cmd;
   char fname[MAX_INPUT_LENGTH], buf[MAX_CMD_LENGTH], bitBuf[MAX_INPUT_LENGTH];
-  size_t buflen;
-  int truncated = FALSE;
+  int wrote;
 
   zone = zone_table[zrnum].number;
   top = zone_table[zrnum].top;
@@ -764,45 +775,27 @@ static int trigedit_write_zone(zone_rnum zrnum, int invis_lev)
            *bitBuf ? bitBuf : "0", GET_TRIG_NARG(trig),
            GET_TRIG_ARG(trig) ? GET_TRIG_ARG(trig) : "", STRING_TERMINATOR);
 
-      /* Build the text for the script.  The editor caps what a builder can
-       * type at MAX_CMD_LENGTH, so the strcat() pair below was within the
-       * buffer for anything trigedit produced -- but a trigger read from a
-       * .trg file carries no such cap, and nothing here was measuring.
+      /* Write each command straight to the file.  The script used to be
+       * assembled in a 16K stack buffer first, by a strcat() pair that
+       * measured nothing: the editor caps what a builder can type at
+       * MAX_CMD_LENGTH, so anything trigedit produced fitted, but a
+       * trigger read from a .trg file carries no such cap and the shipped
+       * world already holds one within a couple of hundred bytes of it.
        *
-       * Stopping loses the tail of an over-long trigger, which is not a
-       * good outcome; writing past the end of a 16K stack buffer is a worse
-       * one.  Say loudly which trigger it was. */
-      buflen = 0;
-      buf[0] = '\0';
-      truncated = FALSE;
-      for (cmd = trig->cmdlist; cmd; cmd = cmd->next) {
-        size_t cmdlen = cmd->cmd ? strlen(cmd->cmd) : 0;
-
-        if (buflen + cmdlen + 2 > sizeof(buf)) {
-          mudlog(BRF, LVL_BUILDER, TRUE,
-                 "SYSERR: Trigger %d is longer than %d bytes; the rest was not saved.",
-                 GET_TRIG_VNUM(trig), (int)sizeof(buf));
-          truncated = TRUE;
-          break;
+       * The buffer was doing no work -- the commands reach the file in the
+       * same order either way -- so removing it takes the bound away with
+       * it, and nothing has to be truncated or refused. */
+      wrote = FALSE;
+      for (cmd = trig->cmdlist; cmd; cmd = cmd->next)
+        if (cmd->cmd) {
+          fprintf(trig_file, "%s\n", cmd->cmd);
+          wrote = TRUE;
         }
 
-        if (cmdlen)
-          memcpy(buf + buflen, cmd->cmd, cmdlen);
-        buflen += cmdlen;
-        buf[buflen++] = '\n';
-        buf[buflen] = '\0';
-      }
+      if (!wrote)
+        fprintf(trig_file, "* Empty script");
 
-      /* An empty buffer here means one of two different things, and calling
-       * both of them empty puts a lie in the .trg -- the file would say the
-       * trigger has no body, and the next boot would agree with it.  A first
-       * command too long for the buffer leaves nothing written at all. */
-      if (!buf[0])
-        strcpy(buf, truncated ? "* Script too long to save; the original was not empty"
-                              : "* Empty script");
-
-      fprintf(trig_file, "%s%c\n", buf, STRING_TERMINATOR);
-      *buf = '\0';
+      fprintf(trig_file, "%c\n", STRING_TERMINATOR);
     }
   }
 
