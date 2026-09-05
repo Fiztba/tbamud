@@ -749,15 +749,25 @@ static int ascii_convert_house(struct char_data *ch, obj_vnum vnum)
 	 * prototype, and an empty file is written in its place: the house is
 	 * emptied and the command reports success.
 	 *
-	 * An ascii object file opens with '#' and a vnum alone on the line,
-	 * and the line after it is another such vnum, the '$~' that ends the
-	 * file, or one of objsave_save_obj_record()'s tags, which are four
-	 * characters and a colon.  A binary record can reach the first of
-	 * those by chance -- item_number 0x3023 through 0x3923 puts '#' and a
-	 * digit in the first two bytes, and a wear position of 10 or 13 puts a
-	 * newline in the third -- so the second line is checked too.  Past the
-	 * newline of such a record lies the high half of that wear position, a
-	 * zero byte, which is none of the three. */
+	 * An ascii object file opens with '#' and a vnum alone on the line.
+	 * The line after it is blank for any object with nothing altered from
+	 * its prototype: House_crashsave() calls House_save() with a locate
+	 * of 0, so objsave_save_obj_record() omits its "Loc :" line, and such
+	 * an object has no other tag to write either.  It emits the vnum and
+	 * then the blank line that closes every record.  Failing that the
+	 * next line is
+	 * another vnum, the '$~' that ends the file, or one of that
+	 * function's tags, which are four characters and a colon.
+	 *
+	 * A binary record can reach the first line by chance -- item_number
+	 * 0x3023 through 0x3923 puts '#' and a digit in the first two bytes,
+	 * and a wear position of 10 or 13 puts a newline in the third -- so
+	 * the second line is checked too.  Past the newline of such a record
+	 * lies the high half of that wear position, a zero byte, which is
+	 * none of the alternatives.  Note which way the two mistakes fall:
+	 * reading an ascii file as binary empties the house, while reading a
+	 * binary file as ascii only refuses to convert it.  The test belongs
+	 * on the loose side of that. */
 	if (fgets(probe, sizeof(probe), in) != NULL && *probe == '#')
 	{
 		/* Cast: this is deliberately reading a file that may be binary, and
@@ -766,6 +776,7 @@ static int ascii_convert_house(struct char_data *ch, obj_vnum vnum)
 		if (q > probe + 1 && (*q == '\n' || *q == '\r') &&
 		    fgets(probe, sizeof(probe), in) != NULL &&
 		    (*probe == '#' || *probe == '$' ||
+		     *probe == '\n' || *probe == '\r' ||
 		     (strlen(probe) > 4 && probe[4] == ':')))
 		{
 			send_to_char(ch, "...already in the ascii format; nothing to convert");
