@@ -308,7 +308,7 @@ void create_world_index(int znum, const char *type)
 
   /* Out with the old, in with the new.  rename() replaces the destination
    * outright on POSIX; Windows refuses a name that already exists, hence
-   * the retry.  dg_olc.c:805-807 does the same. */
+   * the retry.  trigedit_write_zone() does the same. */
   if (rename(new_name, old_name)) {
     remove(old_name);
     if (rename(new_name, old_name)) {
@@ -511,7 +511,7 @@ int save_zone(zone_rnum zone_num)
    * A failed write reports itself at the flush or the close, the records
    * before it having reached only the stream's buffer, so renaming
    * without looking would put a truncated zone file over a good one.
-   * This is the shape genqst.c:383-405 already uses. */
+   * This is the shape save_quests() already uses. */
   if (fflush(zfile) == EOF || ferror(zfile)) {
     mudlog(BRF, LVL_BUILDER, TRUE,
            "SYSERR: Error writing zone file %s.", fname);
@@ -532,7 +532,7 @@ int save_zone(zone_rnum zone_num)
   snprintf(oldname, sizeof(oldname), "%s/%d.zon", ZON_PREFIX, zone_table[zone_num].number);
   /* rename() replaces the destination outright on POSIX, so the old file
    * is never briefly absent; the Windows C runtime refuses a name that
-   * already exists, which is what the retry is for.  dg_olc.c:805-807
+   * already exists, which is what the retry is for.  trigedit_write_zone()
    * installs trigger files the same way. */
   if (rename(fname, oldname)) {
     remove(oldname);

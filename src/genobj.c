@@ -292,7 +292,7 @@ int save_objects(zone_rnum zone_num)
    * A failed write reports itself at the flush or the close, the records
    * before it having reached only the stream's buffer, so renaming
    * without looking would put a truncated object file over a good one.
-   * This is the shape genqst.c:383-405 already uses. */
+   * This is the shape save_quests() already uses. */
   if (fflush(fp) == EOF || ferror(fp)) {
     mudlog(BRF, LVL_BUILDER, TRUE,
            "SYSERR: Error writing object file %s.", filename);
@@ -313,7 +313,7 @@ int save_objects(zone_rnum zone_num)
   snprintf(buf, sizeof(buf), "%s/%d.obj", OBJ_PREFIX, zone_table[zone_num].number);
   /* rename() replaces the destination outright on POSIX, so the old file
    * is never briefly absent; the Windows C runtime refuses a name that
-   * already exists, which is what the retry is for.  dg_olc.c:805-807
+   * already exists, which is what the retry is for.  trigedit_write_zone()
    * installs trigger files the same way. */
   if (rename(filename, buf)) {
     remove(buf);
