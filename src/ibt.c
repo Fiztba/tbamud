@@ -663,7 +663,15 @@ ACMD(do_ibt)
         else
           buf[len] = '\0';
       }
-      snprintf(buf + len, sizeof(buf) - len, "%sYou may use %s%s show <number>%s to see more indepth about the %s.%s\r\n", QCYN, QYEL, CMD_NAME, QCYN, CMD_NAME, QNRM);
+      /* Last write in the branch, so len goes nowhere after this -- but the
+       * fragment does: snprintf() has already written as much of the line as
+       * fits and terminated it, and page_string() below prints what is in
+       * buf.  A listing that filled the buffer would end mid-sentence, or
+       * mid-escape where the cut lands inside one of the colour codes.  Drop
+       * it, the same as the three above. */
+      nlen = snprintf(buf + len, sizeof(buf) - len, "%sYou may use %s%s show <number>%s to see more indepth about the %s.%s\r\n", QCYN, QYEL, CMD_NAME, QCYN, CMD_NAME, QNRM);
+      if (nlen < 0 || len + nlen >= sizeof(buf))
+        buf[len] = '\0';
     } else {
       snprintf(buf + len, sizeof(buf) - len, "No %ss have been reported!\r\n", CMD_NAME);
     }
