@@ -698,7 +698,8 @@ int save_shops(zone_rnum zone_num)
     if (rename(fname, oldname)) {
       mudlog(BRF, LVL_BUILDER, TRUE,
              "SYSERR: Could not put the shop file %s in place.", oldname);
-      remove(fname);
+      if (!CONFIG_DEBUG_MODE)
+        remove(fname);
       return FALSE;
     }
   }

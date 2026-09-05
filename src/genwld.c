@@ -482,7 +482,8 @@ int save_rooms(zone_rnum rzone)
     if (rename(filename, buf)) {
       mudlog(BRF, LVL_BUILDER, TRUE,
              "SYSERR: Could not put the room file %s in place.", buf);
-      remove(filename);
+      if (!CONFIG_DEBUG_MODE)
+        remove(filename);
       return FALSE;
     }
   }

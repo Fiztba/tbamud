@@ -320,7 +320,8 @@ int save_objects(zone_rnum zone_num)
     if (rename(filename, buf)) {
       mudlog(BRF, LVL_BUILDER, TRUE,
              "SYSERR: Could not put the object file %s in place.", buf);
-      remove(filename);
+      if (!CONFIG_DEBUG_MODE)
+        remove(filename);
       return FALSE;
     }
   }

@@ -314,7 +314,8 @@ void create_world_index(int znum, const char *type)
     if (rename(new_name, old_name)) {
       mudlog(BRF, LVL_IMPL, TRUE,
              "SYSERR: OLC: Could not put %s in place.", old_name);
-      remove(new_name);
+      if (!CONFIG_DEBUG_MODE)
+        remove(new_name);
     }
   }
 }
@@ -539,7 +540,8 @@ int save_zone(zone_rnum zone_num)
     if (rename(fname, oldname)) {
       mudlog(BRF, LVL_BUILDER, TRUE,
              "SYSERR: Could not put the zone file %s in place.", oldname);
-      remove(fname);
+      if (!CONFIG_DEBUG_MODE)
+        remove(fname);
       return FALSE;
     }
   }

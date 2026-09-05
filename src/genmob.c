@@ -385,7 +385,8 @@ int save_mobiles(zone_rnum rznum)
     if (rename(mobfname, usedfname)) {
       mudlog(BRF, LVL_BUILDER, TRUE,
              "SYSERR: Could not put the mobile file %s in place.", usedfname);
-      remove(mobfname);
+      if (!CONFIG_DEBUG_MODE)
+        remove(mobfname);
       return FALSE;
     }
   }
