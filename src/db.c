@@ -1325,6 +1325,18 @@ void parse_room(FILE *fl, int virtual_nr)
       log("SYSERR: Room %d is outside of any zone.", virtual_nr);
       exit(1);
     }
+  /* Test the lower bound again, against the zone the loop stopped on.  The
+   * one above ran against whichever zone the previous room landed in, and
+   * this loop only ever advances, so a vnum falling in a gap between one
+   * zone's top and the next zone's bot passes both and is filed under a
+   * zone that does not contain it.  Gaps are legal -- the .zon reader
+   * rejects only bot > top, and the shipped world has thirty-six of them --
+   * and real_zone_by_thing() searches [bot,top] on its own, so it answers
+   * NOWHERE for such a room while world[].zone says otherwise. */
+  if (virtual_nr < zone_table[zone].bot) {
+    log("SYSERR: Room %d is outside of any zone.", virtual_nr);
+    exit(1);
+  }
   world[room_nr].zone = zone;
   world[room_nr].number = virtual_nr;
   world[room_nr].name = fread_string(fl, buf2);
@@ -1366,7 +1378,7 @@ void parse_room(FILE *fl, int virtual_nr)
     check_bitvector_names(world[room_nr].room_flags[0], room_bits_count, flags, "room");
 
     if(bitsavetodisk) { /* Maybe the implementor just wants to look at the 128bit files */
-      add_to_save_list(zone_table[real_zone_by_thing(virtual_nr)].number, 3);
+      add_to_save_list(zone_table[real_zone_by_thing(virtual_nr)].number, SL_WLD);
       converting = TRUE;
     }
 
