@@ -593,7 +593,7 @@ int save_shops(zone_rnum zone_num)
     return FALSE;
   }
 
-  snprintf(fname, sizeof(fname), "%s/%d.new", SHP_PREFIX, zone_table[zone_num].number);
+  snprintf(fname, sizeof(fname), "%s%d.new", SHP_PREFIX, zone_table[zone_num].number);
   if (!(shop_file = fopen(fname, "w"))) {
     mudlog(BRF, LVL_GOD, TRUE, "SYSERR: OLC: Cannot open shop file!");
     return FALSE;
@@ -688,7 +688,7 @@ int save_shops(zone_rnum zone_num)
     return FALSE;
   }
 
-  snprintf(oldname, sizeof(oldname), "%s/%d.shp", SHP_PREFIX, zone_table[zone_num].number);
+  snprintf(oldname, sizeof(oldname), "%s%d.shp", SHP_PREFIX, zone_table[zone_num].number);
   /* rename() replaces the destination outright on POSIX, so the old file
    * is never briefly absent; the Windows C runtime refuses a name that
    * already exists, which is what the retry is for.  trigedit_write_zone()

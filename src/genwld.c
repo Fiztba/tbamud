@@ -351,7 +351,7 @@ int save_rooms(zone_rnum rzone)
   log("GenOLC: save_rooms: Saving rooms in zone #%d (%d-%d).",
 	zone_table[rzone].number, genolc_zone_bottom(rzone), zone_table[rzone].top);
 
-  snprintf(filename, sizeof(filename), "%s/%d.new", WLD_PREFIX, zone_table[rzone].number);
+  snprintf(filename, sizeof(filename), "%s%d.new", WLD_PREFIX, zone_table[rzone].number);
   if (!(sf = fopen(filename, "w"))) {
     perror("SYSERR: save_rooms");
     return FALSE;
@@ -471,7 +471,7 @@ int save_rooms(zone_rnum rzone)
   }
 
   /* Old file we're replacing. */
-  snprintf(buf, sizeof(buf), "%s/%d.wld", WLD_PREFIX, zone_table[rzone].number);
+  snprintf(buf, sizeof(buf), "%s%d.wld", WLD_PREFIX, zone_table[rzone].number);
 
   /* rename() replaces the destination outright on POSIX, so the old file
    * is never briefly absent; the Windows C runtime refuses a name that

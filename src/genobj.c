@@ -196,7 +196,7 @@ int save_objects(zone_rnum zone_num)
     return FALSE;
   }
 
-  snprintf(filename, sizeof(filename), "%s/%d.new", OBJ_PREFIX, zone_table[zone_num].number);
+  snprintf(filename, sizeof(filename), "%s%d.new", OBJ_PREFIX, zone_table[zone_num].number);
   if (!(fp = fopen(filename, "w+"))) {
     mudlog(BRF, LVL_IMMORT, TRUE, "SYSERR: OLC: Cannot open objects file %s!", filename);
     return FALSE;
@@ -310,7 +310,7 @@ int save_objects(zone_rnum zone_num)
     return FALSE;
   }
 
-  snprintf(buf, sizeof(buf), "%s/%d.obj", OBJ_PREFIX, zone_table[zone_num].number);
+  snprintf(buf, sizeof(buf), "%s%d.obj", OBJ_PREFIX, zone_table[zone_num].number);
   /* rename() replaces the destination outright on POSIX, so the old file
    * is never briefly absent; the Windows C runtime refuses a name that
    * already exists, which is what the retry is for.  trigedit_write_zone()

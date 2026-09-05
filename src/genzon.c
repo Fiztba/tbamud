@@ -89,7 +89,7 @@ zone_rnum create_new_zone(zone_vnum vzone_num, room_vnum bottom, room_vnum top, 
      }
 
   /* Create the zone file. */
-  snprintf(buf, sizeof(buf), "%s/%d.zon", ZON_PREFIX, vzone_num);
+  snprintf(buf, sizeof(buf), "%s%d.zon", ZON_PREFIX, vzone_num);
   if (!(fp = fopen(buf, "w"))) {
     mudlog(BRF, LVL_IMPL, TRUE, "SYSERR: OLC: Can't write new zone file.");
     *error = "Could not write zone file.\r\n";
@@ -99,7 +99,7 @@ zone_rnum create_new_zone(zone_vnum vzone_num, room_vnum bottom, room_vnum top, 
   fclose(fp);
 
   /* Create the room file. */
-  snprintf(buf, sizeof(buf), "%s/%d.wld", WLD_PREFIX, vzone_num);
+  snprintf(buf, sizeof(buf), "%s%d.wld", WLD_PREFIX, vzone_num);
   if (!(fp = fopen(buf, "w"))) {
     mudlog(BRF, LVL_IMPL, TRUE, "SYSERR: OLC: Can't write new world file.");
     *error = "Could not write world file.\r\n";
@@ -109,7 +109,7 @@ zone_rnum create_new_zone(zone_vnum vzone_num, room_vnum bottom, room_vnum top, 
   fclose(fp);
 
   /* Create the mobile file. */
-  snprintf(buf, sizeof(buf), "%s/%d.mob", MOB_PREFIX, vzone_num);
+  snprintf(buf, sizeof(buf), "%s%d.mob", MOB_PREFIX, vzone_num);
   if (!(fp = fopen(buf, "w"))) {
     mudlog(BRF, LVL_IMPL, TRUE, "SYSERR: OLC: Can't write new mob file.");
     *error = "Could not write mobile file.\r\n";
@@ -119,7 +119,7 @@ zone_rnum create_new_zone(zone_vnum vzone_num, room_vnum bottom, room_vnum top, 
   fclose(fp);
 
   /* Create the object file. */
-  snprintf(buf, sizeof(buf), "%s/%d.obj", OBJ_PREFIX, vzone_num);
+  snprintf(buf, sizeof(buf), "%s%d.obj", OBJ_PREFIX, vzone_num);
   if (!(fp = fopen(buf, "w"))) {
     mudlog(BRF, LVL_IMPL, TRUE, "SYSERR: OLC: Can't write new obj file.");
     *error = "Could not write object file.\r\n";
@@ -129,7 +129,7 @@ zone_rnum create_new_zone(zone_vnum vzone_num, room_vnum bottom, room_vnum top, 
   fclose(fp);
 
   /* Create the shop file. */
-  snprintf(buf, sizeof(buf), "%s/%d.shp", SHP_PREFIX, vzone_num);
+  snprintf(buf, sizeof(buf), "%s%d.shp", SHP_PREFIX, vzone_num);
   if (!(fp = fopen(buf, "w"))) {
     mudlog(BRF, LVL_IMPL, TRUE, "SYSERR: OLC: Can't write new shop file.");
     *error = "Could not write shop file.\r\n";
@@ -139,7 +139,7 @@ zone_rnum create_new_zone(zone_vnum vzone_num, room_vnum bottom, room_vnum top, 
   fclose(fp);
 
   /* Create the quests file */
-  snprintf(buf, sizeof(buf), "%s/%d.qst", QST_PREFIX, vzone_num);
+  snprintf(buf, sizeof(buf), "%s%d.qst", QST_PREFIX, vzone_num);
   if (!(fp = fopen(buf, "w"))) {
     mudlog(BRF, LVL_IMPL, TRUE, "SYSERR: OLC: Can't write new quest file");
     *error = "Could not write quest file.\r\n";
@@ -149,7 +149,7 @@ zone_rnum create_new_zone(zone_vnum vzone_num, room_vnum bottom, room_vnum top, 
   fclose(fp);
 
   /* Create the trigger file. */
-  snprintf(buf, sizeof(buf), "%s/%d.trg", TRG_PREFIX, vzone_num);
+  snprintf(buf, sizeof(buf), "%s%d.trg", TRG_PREFIX, vzone_num);
   if (!(fp = fopen(buf, "w"))) {
     mudlog(BRF, LVL_IMPL, TRUE, "SYSERR: OLC: Can't write new trigger file");
     *error = "Could not write trigger file.\r\n";
@@ -250,8 +250,8 @@ void create_world_index(int znum, const char *type)
     return;
   }
 
-  snprintf(old_name, sizeof(old_name), "%s/index", prefix);
-  snprintf(new_name, sizeof(new_name), "%s/newindex", prefix);
+  snprintf(old_name, sizeof(old_name), "%sindex", prefix);
+  snprintf(new_name, sizeof(new_name), "%snewindex", prefix);
 
   if (!(oldfile = fopen(old_name, "r"))) {
     mudlog(BRF, LVL_IMPL, TRUE, "SYSERR: OLC: Failed to open %s.", old_name);
@@ -368,7 +368,7 @@ int save_zone(zone_rnum zone_num)
     return FALSE;
   }
 
-  snprintf(fname, sizeof(fname), "%s/%d.new", ZON_PREFIX, zone_table[zone_num].number);
+  snprintf(fname, sizeof(fname), "%s%d.new", ZON_PREFIX, zone_table[zone_num].number);
   if (!(zfile = fopen(fname, "w"))) {
     mudlog(BRF, LVL_BUILDER, TRUE, "SYSERR: OLC: save_zones:  Can't write zone %d.", zone_table[zone_num].number);
     return FALSE;
@@ -529,7 +529,7 @@ int save_zone(zone_rnum zone_num)
     return FALSE;
   }
 
-  snprintf(oldname, sizeof(oldname), "%s/%d.zon", ZON_PREFIX, zone_table[zone_num].number);
+  snprintf(oldname, sizeof(oldname), "%s%d.zon", ZON_PREFIX, zone_table[zone_num].number);
   /* rename() replaces the destination outright on POSIX, so the old file
    * is never briefly absent; the Windows C runtime refuses a name that
    * already exists, which is what the retry is for.  trigedit_write_zone()
