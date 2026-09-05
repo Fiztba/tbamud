@@ -56,7 +56,7 @@ static void Write( descriptor_t *apDescriptor, const char *apData )
 /* Seconds between repeats of the same protocol bug report.  See ReportBug. */
 #define REPORT_BUG_INTERVAL 60
 
-static void ReportBug( const char *apText )
+static void ReportBugAt( const char *apText, int aLine )
 {
    /* Most of these report a malformed colour code, and the text carrying
     * it is not always the MUD's own: ProtocolOutput() runs over every line
@@ -70,7 +70,7 @@ static void ReportBug( const char *apText )
     * description is a real thing to fix.  Saying it thousands of times is
     * not, and it buries the reports that matter.  Say it, then say how
     * often. */
-   static char sLastBug[512];
+   static int sLastLine = -1;
    static time_t sLastReport;
    static int sSuppressed;
    char text[512];
@@ -78,17 +78,27 @@ static void ReportBug( const char *apText )
    time_t now = time(0);
    bool_t bSame;
 
-   /* Most callers end their text with a newline and log() adds one of its
+   /* Every caller ends its text with a newline and log() adds one of its
     * own, so the count below would come out on a line by itself with no
-    * timestamp in front of it.  Trim first, and compare the trimmed form,
-    * so two reports differing only in a line ending are still the same
-    * report. */
+    * timestamp in front of it.  Trim the ends -- and flatten any line
+    * ending left in the middle, because several of these reports quote
+    * text a player typed, and do_title()'s echo puts a carriage return
+    * inside the quoted part. */
    snprintf( text, sizeof(text), "%s", apText );
    len = strlen(text);
    while ( len > 0 && (text[len - 1] == '\n' || text[len - 1] == '\r') )
       text[--len] = '\0';
+   while ( len-- > 0 )
+      if ( text[len] == '\n' || text[len] == '\r' )
+         text[len] = ' ';
 
-   bSame = !strcmp( sLastBug, text );
+   /* Key the throttle on the call site, not on the text.  Six of these
+    * reports interpolate bytes the player chose, and only one previous
+    * report is remembered, so alternating two malformed colour codes
+    * matched nothing and nothing was ever suppressed -- the flood this
+    * exists to stop went through untouched.  A site says it once and then
+    * counts, whatever the payload. */
+   bSame = ( aLine == sLastLine );
 
    /* now < sLastReport is a clock that has gone backwards.  Report rather
     * than suppress until it has caught up, or one report could silence the
@@ -99,15 +109,28 @@ static void ReportBug( const char *apText )
       return;
    }
 
-   if ( bSame && sSuppressed > 0 )
-      log( "%s (%d more since the last report)", text, sSuppressed );
-   else
+   if ( sSuppressed > 0 )
+   {
+      /* Say the count even when this report is from somewhere else: the
+       * run has ended either way, and resetting it on the way past threw
+       * the held-back reports away with nothing said. */
+      if ( bSame )
+         log( "%s (%d more since the last report)", text, sSuppressed );
+      else
+         log( "(%d more of the previous report)", sSuppressed );
+   }
+
+   if ( !bSame || sSuppressed == 0 )
       log( "%s", text );
 
-   snprintf( sLastBug, sizeof(sLastBug), "%s", text );
+   sLastLine = aLine;
    sLastReport = now;
    sSuppressed = 0;
 }
+
+/* Report by call site: two reports from the same line are the same report
+ * however their text differs. */
+#define ReportBug(text) ReportBugAt( (text), __LINE__ )
 
 static void InfoMessage( descriptor_t *apDescriptor, const char *apData )
 {
